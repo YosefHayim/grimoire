@@ -1,0 +1,92 @@
+meta:
+  name: "Catppuccin Setup"
+  description: "A beautifully themed wizard"
+
+theme:
+  tokens:
+    primary: "#89b4fa"
+    success: "#a6e3a1"
+    error: "#f38ba8"
+    warning: "#fab387"
+    info: "#74c7ec"
+    muted: "#6c7086"
+    accent: "#cba6f7"
+  icons:
+    step: "\u2B24"
+    stepDone: "\u2714"
+    stepPending: "\u25EF"
+    pointer: "\u276F"
+
+steps:
+  - id: username
+    type: text
+    message: "Choose a username"
+    validate:
+      - rule: required
+      - rule: minLength
+        value: 3
+      - rule: maxLength
+        value: 20
+      - rule: pattern
+        value: "^[a-zA-Z][a-zA-Z0-9_]*$"
+        message: "Letters, numbers, underscores only. Must start with a letter."
+
+  - id: email
+    type: text
+    message: "Your email address"
+    validate:
+      - rule: required
+      - rule: pattern
+        value: "^[^@]+@[^@]+\\.[^@]+$"
+        message: "Enter a valid email address"
+
+  - id: role
+    type: select
+    message: "Select your role"
+    options:
+      - { value: developer, label: "Developer" }
+      - { value: designer, label: "Designer" }
+      - { value: manager, label: "Project Manager" }
+      - { value: devops, label: "DevOps Engineer" }
+
+  - id: experience
+    type: number
+    message: "Years of experience"
+    min: 0
+    max: 50
+    default: 3
+
+  - id: interests
+    type: multiselect
+    message: "Areas of interest"
+    options:
+      - { value: frontend, label: "Frontend Development" }
+      - { value: backend, label: "Backend Development" }
+      - { value: mobile, label: "Mobile Development" }
+      - { value: ai, label: "AI / Machine Learning" }
+      - { value: devops, label: "DevOps / Infrastructure" }
+      - { value: security, label: "Security" }
+    min: 1
+    max: 3
+
+  - id: newsletter
+    type: confirm
+    message: "Subscribe to our newsletter?"
+    default: true
+
+  - id: password
+    type: password
+    message: "Set a password"
+    validate:
+      - rule: minLength
+        value: 8
+        message: "Password must be at least 8 characters"
+
+  - id: confirm
+    type: confirm
+    message: "Create your account?"
+    next: __done__
+
+output:
+  format: json
+  path: "account.json"

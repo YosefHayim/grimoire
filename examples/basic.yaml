@@ -1,0 +1,61 @@
+meta:
+  name: "Project Setup Wizard"
+  version: "1.0.0"
+  description: "Set up a new project with best practices"
+
+steps:
+  - id: project-name
+    type: text
+    message: "What is your project name?"
+    placeholder: "my-awesome-project"
+    validate:
+      - rule: required
+      - rule: pattern
+        value: "^[a-z][a-z0-9-]*$"
+        message: "Must be lowercase with hyphens only"
+      - rule: minLength
+        value: 2
+
+  - id: description
+    type: text
+    message: "Describe your project in one line"
+    required: false
+
+  - id: language
+    type: select
+    message: "Choose a language"
+    options:
+      - { value: typescript, label: "TypeScript" }
+      - { value: javascript, label: "JavaScript" }
+      - { value: python, label: "Python" }
+      - { value: go, label: "Go" }
+    default: typescript
+
+  - id: features
+    type: multiselect
+    message: "Select features to include"
+    options:
+      - { value: linting, label: "Linting (ESLint/Ruff)", hint: "Code quality checks" }
+      - { value: formatting, label: "Formatting (Prettier/Black)", hint: "Auto-format on save" }
+      - { value: testing, label: "Testing framework", hint: "Vitest/Jest/Pytest" }
+      - { value: ci, label: "CI/CD pipeline", hint: "GitHub Actions" }
+      - { value: docker, label: "Docker support" }
+    min: 1
+
+  - id: license
+    type: select
+    message: "Choose a license"
+    options:
+      - { value: mit, label: "MIT", hint: "Permissive, simple" }
+      - { value: apache-2.0, label: "Apache 2.0", hint: "Permissive, patent protection" }
+      - { value: gpl-3.0, label: "GPL 3.0", hint: "Copyleft" }
+      - { value: none, label: "No license" }
+    default: mit
+
+  - id: confirm
+    type: confirm
+    message: "Create project with these settings?"
+    next: __done__
+
+output:
+  format: json

@@ -24,6 +24,15 @@ steps:
     message: "Is this your first time setting up eBay Developer credentials?"
     default: true
 
+  - id: runame-help
+    type: confirm
+    group: "Getting Started"
+    message: "Need help understanding RuName (Redirect URI)?"
+    default: false
+    when:
+      field: first-time
+      equals: true
+
   - id: environment
     type: select
     group: "Environment"
@@ -87,7 +96,15 @@ steps:
       - { value: analytics, label: "Analytics", hint: "Traffic and sales reports" }
       - { value: marketing, label: "Marketing", hint: "Promotions and campaigns" }
       - { value: finance, label: "Finance", hint: "Payouts and transactions" }
+      - { value: reputation, label: "Reputation", hint: "Seller feedback and ratings" }
+      - { value: commerce, label: "Commerce Services", hint: "Taxonomy and catalog APIs" }
     min: 1
+
+  - id: view-scopes
+    type: confirm
+    group: "OAuth Scopes"
+    message: "Would you like to review the selected scope details?"
+    default: false
 
   - id: token-method
     type: select
@@ -123,6 +140,9 @@ steps:
       - { value: windsurf, label: "Windsurf" }
       - { value: zed, label: "Zed" }
       - { value: continue, label: "Continue.dev" }
+      - { value: roo-code, label: "Roo Code" }
+      - { value: claude-code, label: "Claude Code CLI" }
+      - { value: amazon-q, label: "Amazon Q" }
 
   - id: docker-setup
     type: confirm

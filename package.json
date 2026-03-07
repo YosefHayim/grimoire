@@ -1,0 +1,66 @@
+{
+  "name": "grimoire-wizard",
+  "version": "0.1.0",
+  "description": "Config-driven CLI wizard framework. Define interactive terminal wizards in YAML/JSON with back-navigation, conditional branching, theming, and structured output.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "grimoire": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "wizard",
+    "tui",
+    "terminal",
+    "prompt",
+    "interactive",
+    "yaml",
+    "json",
+    "config-driven",
+    "back-navigation",
+    "conditional",
+    "theming",
+    "inquirer",
+    "clack"
+  ],
+  "author": "Yosef Hayim (https://github.com/YosefHayim)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.4.0",
+    "commander": "^13.0.0",
+    "cosmiconfig": "^9.0.0",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "grimoire-wizard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Config-driven CLI wizard framework. Define interactive terminal wizards in YAML/JSON with back-navigation, conditional branching, theming, and structured output.",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,7 @@
   },
   "files": [
     "dist",
+    "examples",
     "schema",
     "README.md",
     "LICENSE"

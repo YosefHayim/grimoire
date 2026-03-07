@@ -7,6 +7,10 @@ export type {
   ConfirmStepConfig,
   PasswordStepConfig,
   NumberStepConfig,
+  SearchStepConfig,
+  EditorStepConfig,
+  PathStepConfig,
+  ToggleStepConfig,
   SelectOption,
   ValidationRule,
   Condition,
@@ -15,6 +19,7 @@ export type {
   WizardState,
   WizardTransition,
   WizardRenderer,
+  PreFlightCheck,
 } from './types';
 
 export { parseWizardConfig } from './schema';
@@ -28,7 +33,10 @@ export {
   validateStepAnswer,
 } from './engine';
 export { resolveTheme } from './theme';
-export { runWizard } from './runner';
+export { resolveEnvDefault } from './resolve';
+export { runWizard, runPreFlightChecks } from './runner';
 export type { RunWizardOptions } from './runner';
 export { defineWizard } from './define';
 export { InquirerRenderer } from './renderers/inquirer';
+export type { GrimoirePlugin, StepPlugin } from './plugins';
+export { registerPlugin, getPluginStep, clearPlugins } from './plugins';

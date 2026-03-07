@@ -3,9 +3,22 @@
 import { program } from 'commander';
 import { loadWizardConfig } from './parser';
 import { runWizard } from './runner';
+import { getVisibleSteps } from './engine';
+import { resolveTheme } from './theme';
+import { scaffoldWizard } from './scaffolder';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { stringify as yamlStringify } from 'yaml';
+import type { Condition, WizardConfig } from './types';
+
+interface RunCommandOpts {
+  output?: string;
+  format?: string;
+  quiet?: boolean;
+  dryRun?: boolean;
+  mock?: string;
+  json?: boolean;
+}
 
 program
   .name('grimoire')
@@ -19,12 +32,39 @@ program
   .option('-o, --output <path>', 'Write answers to file')
   .option('-f, --format <format>', 'Output format: json, env, yaml', 'json')
   .option('-q, --quiet', 'Suppress header and summary output')
-  .action(async (configPath: string, opts: { output?: string; format?: string; quiet?: boolean }) => {
+  .option('--dry-run', 'Show step plan without running the wizard')
+  .option('--mock <json>', 'Run wizard with preset answers (JSON string)')
+  .option('--json', 'Output structured JSON result to stdout')
+  .action(async (configPath: string, opts: RunCommandOpts) => {
     try {
       const fullPath = resolve(configPath);
       const config = await loadWizardConfig(fullPath);
 
-      const answers = await runWizard(config, { quiet: opts.quiet });
+      if (opts.dryRun) {
+        printDryRun(config);
+        return;
+      }
+
+      const mockAnswers = parseMockAnswers(opts.mock);
+      const isJsonOutput = opts.json === true;
+
+      const answers = await runWizard(config, {
+        quiet: opts.quiet ?? isJsonOutput,
+        mockAnswers,
+      });
+
+      if (isJsonOutput) {
+        const stepsCompleted = Object.keys(answers).length;
+        const result = {
+          ok: true,
+          wizard: config.meta.name,
+          answers,
+          stepsCompleted,
+          format: 'json',
+        };
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
 
       if (opts.output) {
         const format = opts.format ?? config.output?.format ?? 'json';
@@ -34,6 +74,14 @@ program
         console.log(`\n  Answers written to: ${outputPath}\n`);
       }
     } catch (error) {
+      if (opts.json) {
+        const result = {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+        console.log(JSON.stringify(result, null, 2));
+        process.exit(1);
+      }
       if (error instanceof Error) {
         console.error(`\n  Error: ${error.message}\n`);
       }
@@ -49,17 +97,156 @@ program
     try {
       const fullPath = resolve(configPath);
       const config = await loadWizardConfig(fullPath);
-      console.log(`\n  \u2713 Valid wizard config: "${config.meta.name}"`);
+      console.log(`\n  ✓ Valid wizard config: "${config.meta.name}"`);
       console.log(`  ${String(config.steps.length)} steps defined\n`);
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`\n  \u2717 Invalid config: ${error.message}\n`);
+        console.error(`\n  ✗ Invalid config: ${error.message}\n`);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command('create')
+  .description('Interactively scaffold a new wizard config file')
+  .argument('[output]', 'Output file path', 'wizard.yaml')
+  .action(async (output: string) => {
+    try {
+      const resolvedPath = resolve(output);
+      await scaffoldWizard(resolvedPath);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(`\n  Error: ${error.message}\n`);
       }
       process.exit(1);
     }
   });
 
 program.parse();
+
+function parseMockAnswers(
+  mockJson: string | undefined,
+): Record<string, unknown> | undefined {
+  if (mockJson === undefined) {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(mockJson);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('--mock value must be a JSON object');
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`--mock value is not valid JSON: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
+function printDryRun(config: WizardConfig): void {
+  const theme = resolveTheme(config.theme);
+  const visibleSteps = getVisibleSteps(config, {});
+
+  console.log();
+  console.log(`  ${theme.bold('Dry Run:')} "${config.meta.name}"`);
+  if (config.meta.description) {
+    console.log(`  ${theme.muted(config.meta.description)}`);
+  }
+  console.log();
+
+  if (config.checks && config.checks.length > 0) {
+    console.log(`  ${theme.bold('Pre-flight checks:')}`);
+    for (const check of config.checks) {
+      console.log(`    ${theme.muted('•')} ${check.name}: ${theme.muted(check.run)}`);
+    }
+    console.log();
+  }
+
+  for (let i = 0; i < config.steps.length; i++) {
+    const step = config.steps[i];
+    if (!step) continue;
+
+    const isVisible = visibleSteps.some((v) => v.id === step.id);
+    const num = String(i + 1).padStart(2, ' ');
+    const typeStr = step.type.padEnd(12);
+    const idStr = step.id.padEnd(20);
+    const msg = `"${step.message}"`;
+
+    const parts: string[] = [];
+
+    if (!isVisible) {
+      parts.push('(hidden)');
+    }
+
+    if (step.required === false) {
+      parts.push('(optional)');
+    }
+
+    if (step.type === 'multiselect') {
+      if (step.min !== undefined) parts.push(`min:${String(step.min)}`);
+      if (step.max !== undefined) parts.push(`max:${String(step.max)}`);
+    }
+
+    if (step.when) {
+      parts.push(`[when: ${formatCondition(step.when)}]`);
+    }
+
+    if (step.type === 'select' && step.routes) {
+      const routeParts = Object.entries(step.routes)
+        .map(([k, v]) => `${k}→${v}`)
+        .join(', ');
+      parts.push(`routes: {${routeParts}}`);
+    }
+
+    if (step.next) {
+      parts.push(`→ ${step.next}`);
+    }
+
+    const suffix = parts.length > 0 ? `  ${parts.join('  ')}` : '';
+    console.log(`  Step ${num}  ${typeStr} ${idStr} ${msg}${suffix}`);
+  }
+
+  console.log();
+}
+
+function formatCondition(condition: Condition): string {
+  if ('all' in condition) {
+    return `all(${condition.all.map(formatCondition).join(', ')})`;
+  }
+  if ('any' in condition) {
+    return `any(${condition.any.map(formatCondition).join(', ')})`;
+  }
+  if ('not' in condition) {
+    return `not(${formatCondition(condition.not)})`;
+  }
+  if ('equals' in condition) {
+    return `${condition.field} equals ${String(condition.equals)}`;
+  }
+  if ('notEquals' in condition) {
+    return `${condition.field} notEquals ${String(condition.notEquals)}`;
+  }
+  if ('includes' in condition) {
+    return `${condition.field} includes ${String(condition.includes)}`;
+  }
+  if ('notIncludes' in condition) {
+    return `${condition.field} notIncludes ${String(condition.notIncludes)}`;
+  }
+  if ('greaterThan' in condition) {
+    return `${condition.field} > ${String(condition.greaterThan)}`;
+  }
+  if ('lessThan' in condition) {
+    return `${condition.field} < ${String(condition.lessThan)}`;
+  }
+  if ('isEmpty' in condition) {
+    return `${condition.field} isEmpty`;
+  }
+  if ('isNotEmpty' in condition) {
+    return `${condition.field} isNotEmpty`;
+  }
+  return 'unknown';
+}
 
 function toEnvKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();

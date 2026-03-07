@@ -1,0 +1,151 @@
+meta:
+  name: "eBay MCP Setup"
+  description: "Interactive setup wizard for eBay MCP server configuration"
+
+theme:
+  tokens:
+    primary: "#0064d2"
+    success: "#4caf50"
+    error: "#e53935"
+    warning: "#ff9800"
+    info: "#2196f3"
+    muted: "#757575"
+    accent: "#7c3aed"
+
+checks:
+  - name: "Node.js installed"
+    run: "node --version"
+    message: "Node.js >= 18 is required"
+
+steps:
+  - id: first-time
+    type: confirm
+    group: "Getting Started"
+    message: "Is this your first time setting up eBay Developer credentials?"
+    default: true
+
+  - id: environment
+    type: select
+    group: "Environment"
+    message: "Select target environment"
+    options:
+      - { value: sandbox, label: "Sandbox (Development & Testing)" }
+      - { value: production, label: "Production (Live Trading)" }
+    default: sandbox
+
+  - id: client-id
+    type: text
+    group: "Credentials"
+    message: "Enter your eBay App ID (Client ID)"
+    placeholder: "YourApp-SBX-xxxxxxxx-xxxxxxxx"
+    validate:
+      - rule: required
+        message: "Client ID is required"
+
+  - id: client-secret
+    type: password
+    group: "Credentials"
+    message: "Enter your eBay Cert ID (Client Secret)"
+    validate:
+      - rule: required
+        message: "Client Secret is required"
+
+  - id: redirect-uri
+    type: text
+    group: "Credentials"
+    message: "Enter your RuName (Redirect URI)"
+    default: "http://localhost:3000/oauth/callback"
+    validate:
+      - rule: required
+      - rule: pattern
+        value: "^https?://"
+        message: "Must be a valid URL starting with http:// or https://"
+
+  - id: marketplace
+    type: search
+    group: "Marketplace"
+    message: "Search for your eBay marketplace"
+    options:
+      - { value: EBAY_US, label: "United States (EBAY_US)" }
+      - { value: EBAY_GB, label: "United Kingdom (EBAY_GB)" }
+      - { value: EBAY_DE, label: "Germany (EBAY_DE)" }
+      - { value: EBAY_AU, label: "Australia (EBAY_AU)" }
+      - { value: EBAY_FR, label: "France (EBAY_FR)" }
+      - { value: EBAY_IT, label: "Italy (EBAY_IT)" }
+      - { value: EBAY_ES, label: "Spain (EBAY_ES)" }
+      - { value: EBAY_CA, label: "Canada (EBAY_CA)" }
+    default: EBAY_US
+
+  - id: scopes
+    type: multiselect
+    group: "OAuth Scopes"
+    message: "Select OAuth scope categories"
+    options:
+      - { value: inventory, label: "Inventory", hint: "Manage listings and inventory" }
+      - { value: orders, label: "Orders", hint: "View and manage orders" }
+      - { value: account, label: "Account", hint: "Account settings and policies" }
+      - { value: analytics, label: "Analytics", hint: "Traffic and sales reports" }
+      - { value: marketing, label: "Marketing", hint: "Promotions and campaigns" }
+      - { value: finance, label: "Finance", hint: "Payouts and transactions" }
+    min: 1
+
+  - id: token-method
+    type: select
+    group: "Authentication"
+    message: "How would you like to obtain your OAuth token?"
+    options:
+      - { value: interactive, label: "Interactive OAuth Flow", hint: "Recommended" }
+      - { value: manual, label: "Manual OAuth Flow", hint: "Get token yourself" }
+      - { value: existing, label: "I already have a refresh token" }
+      - { value: skip, label: "Skip (configure later)" }
+    routes:
+      existing: refresh-token
+      skip: configure-clients
+
+  - id: refresh-token
+    type: text
+    group: "Authentication"
+    message: "Enter your refresh token"
+    validate:
+      - rule: required
+      - rule: pattern
+        value: "^v\\^1\\.1#"
+        message: "Token should start with v^1.1#"
+
+  - id: configure-clients
+    type: multiselect
+    group: "MCP Clients"
+    message: "Select MCP clients to configure"
+    options:
+      - { value: claude-desktop, label: "Claude Desktop" }
+      - { value: cursor, label: "Cursor" }
+      - { value: cline, label: "Cline (VS Code)" }
+      - { value: windsurf, label: "Windsurf" }
+      - { value: zed, label: "Zed" }
+      - { value: continue, label: "Continue.dev" }
+
+  - id: docker-setup
+    type: confirm
+    group: "Docker"
+    message: "Generate Docker configuration?"
+    default: false
+
+  - id: confirm-setup
+    type: confirm
+    group: "Review"
+    message: "Save this configuration and complete setup?"
+    default: true
+    next: __done__
+
+output:
+  format: env
+  path: .env
+
+actions:
+  - name: "Write environment file"
+    run: "echo 'Configuration saved successfully'"
+  - name: "Generate Docker files"
+    run: "echo 'Docker configuration generated'"
+    when:
+      field: docker-setup
+      equals: true

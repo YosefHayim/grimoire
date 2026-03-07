@@ -14,6 +14,7 @@ export interface RunWizardOptions {
   onStepComplete?: (stepId: string, value: unknown, state: WizardState) => void;
   onCancel?: (state: WizardState) => void;
   plugins?: GrimoirePlugin[];
+  asyncValidate?: (stepId: string, value: unknown, answers: Record<string, unknown>) => Promise<string | null>;
 }
 
 export function runPreFlightChecks(
@@ -151,6 +152,15 @@ export async function runWizard(
           console.log(theme.error(`\n  ${nextState.errors[currentStep.id]}\n`));
           state = { ...nextState, errors: {} };
           continue;
+        }
+
+        if (!isMock && options?.asyncValidate) {
+          const asyncError = await options.asyncValidate(currentStep.id, value, nextState.answers);
+          if (asyncError !== null) {
+            console.log(theme.error(`\n  ${asyncError}\n`));
+            state = { ...nextState, errors: {} };
+            continue;
+          }
         }
 
         state = nextState;

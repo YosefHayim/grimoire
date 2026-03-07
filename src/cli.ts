@@ -6,8 +6,10 @@ import { runWizard } from './runner';
 import { getVisibleSteps } from './engine';
 import { resolveTheme } from './theme';
 import { scaffoldWizard } from './scaffolder';
+import { bashCompletion, zshCompletion, fishCompletion } from './completions';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { stringify as yamlStringify } from 'yaml';
 import type { Condition, WizardConfig } from './types';
 
@@ -23,7 +25,7 @@ interface RunCommandOpts {
 program
   .name('grimoire')
   .description('Config-driven CLI wizard framework')
-  .version('0.1.0');
+  .version('0.2.0');
 
 program
   .command('run')
@@ -62,7 +64,12 @@ program
           stepsCompleted,
           format: 'json',
         };
-        console.log(JSON.stringify(result, null, 2));
+        const jsonStr = JSON.stringify(result, null, 2);
+        console.log(jsonStr);
+        if (opts.output) {
+          const outputPath = resolve(opts.output);
+          writeFileSync(outputPath, jsonStr + '\n', 'utf-8');
+        }
         return;
       }
 
@@ -71,7 +78,9 @@ program
         const outputPath = resolve(opts.output);
         const content = formatOutput(answers, format);
         writeFileSync(outputPath, content, 'utf-8');
-        console.log(`\n  Answers written to: ${outputPath}\n`);
+        if (!opts.quiet) {
+          console.log(`\n  Answers written to: ${outputPath}\n`);
+        }
       }
     } catch (error) {
       if (opts.json) {
@@ -123,7 +132,54 @@ program
     }
   });
 
+program
+  .command('demo')
+  .description('Run a demo wizard showcasing all step types')
+  .action(async () => {
+    try {
+      const demoPath = resolve(
+        fileURLToPath(import.meta.url),
+        '..',
+        '..',
+        'examples',
+        'demo.yaml',
+      );
+      const config = await loadWizardConfig(demoPath);
+      await runWizard(config);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(`\n  Error: ${error.message}\n`);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command('completion')
+  .description('Output shell completion script')
+  .argument('<shell>', 'Shell type: bash, zsh, or fish')
+  .action((shell: string) => {
+    switch (shell) {
+      case 'bash':
+        console.log(bashCompletion());
+        break;
+      case 'zsh':
+        console.log(zshCompletion());
+        break;
+      case 'fish':
+        console.log(fishCompletion());
+        break;
+      default:
+        console.error(`Unknown shell: ${shell}. Supported: bash, zsh, fish`);
+        process.exit(1);
+    }
+  });
+
 program.parse();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 function parseMockAnswers(
   mockJson: string | undefined,
@@ -133,10 +189,10 @@ function parseMockAnswers(
   }
   try {
     const parsed: unknown = JSON.parse(mockJson);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    if (!isRecord(parsed)) {
       throw new Error('--mock value must be a JSON object');
     }
-    return parsed as Record<string, unknown>;
+    return parsed;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`--mock value is not valid JSON: ${error.message}`);

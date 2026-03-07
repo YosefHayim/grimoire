@@ -1,0 +1,112 @@
+meta:
+  name: "Grimoire Component Demo"
+  description: "Showcasing all 10 step types, groups, and theming"
+
+theme:
+  tokens:
+    primary: "#89b4fa"
+    success: "#a6e3a1"
+    error: "#f38ba8"
+    warning: "#fab387"
+    info: "#74c7ec"
+    muted: "#6c7086"
+    accent: "#cba6f7"
+  icons:
+    step: "●"
+    stepDone: "✔"
+    stepPending: "○"
+    pointer: "❯"
+
+steps:
+  - id: name
+    type: text
+    group: "Text Inputs"
+    message: "What is your name?"
+    placeholder: "John Doe"
+    validate:
+      - rule: required
+      - rule: minLength
+        value: 2
+
+  - id: bio
+    type: editor
+    group: "Text Inputs"
+    message: "Write a short bio (opens editor)"
+    required: false
+
+  - id: project-dir
+    type: path
+    group: "Text Inputs"
+    message: "Project directory"
+    placeholder: "./my-project"
+    default: "."
+
+  - id: secret
+    type: password
+    group: "Text Inputs"
+    message: "Enter a secret key"
+    validate:
+      - rule: minLength
+        value: 4
+        message: "At least 4 characters"
+
+  - id: framework
+    type: select
+    group: "Selections"
+    message: "Pick a framework"
+    options:
+      - { value: react, label: "React" }
+      - { value: vue, label: "Vue" }
+      - { value: svelte, label: "Svelte" }
+      - { value: angular, label: "Angular", hint: "Enterprise-ready" }
+
+  - id: tools
+    type: multiselect
+    group: "Selections"
+    message: "Choose your tools"
+    options:
+      - { value: eslint, label: "ESLint", hint: "Linting" }
+      - { value: prettier, label: "Prettier", hint: "Formatting" }
+      - { value: vitest, label: "Vitest", hint: "Testing" }
+      - { value: husky, label: "Husky", hint: "Git hooks" }
+    min: 1
+    max: 3
+
+  - id: language
+    type: search
+    group: "Selections"
+    message: "Search for a language"
+    options:
+      - { value: typescript, label: "TypeScript" }
+      - { value: javascript, label: "JavaScript" }
+      - { value: python, label: "Python" }
+      - { value: go, label: "Go" }
+      - { value: rust, label: "Rust" }
+      - { value: java, label: "Java" }
+      - { value: csharp, label: "C#" }
+      - { value: ruby, label: "Ruby" }
+
+  - id: dark-mode
+    type: toggle
+    group: "Toggles & Numbers"
+    message: "Enable dark mode?"
+    active: "Dark"
+    inactive: "Light"
+    default: true
+
+  - id: port
+    type: number
+    group: "Toggles & Numbers"
+    message: "Dev server port"
+    default: 3000
+    min: 1024
+    max: 65535
+
+  - id: proceed
+    type: confirm
+    group: "Confirmation"
+    message: "Proceed with these settings?"
+    next: __done__
+
+output:
+  format: json

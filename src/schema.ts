@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   Condition,
+  PreFlightCheck,
   ValidationRule,
   WizardConfig,
 } from './types';
@@ -56,6 +57,7 @@ const baseStepFields = {
   when: conditionSchema.optional(),
   keepValuesOnPrevious: z.boolean().optional(),
   required: z.boolean().optional(),
+  group: z.string().optional(),
 } as const;
 
 const textStepSchema = z.object({
@@ -104,6 +106,37 @@ const numberStepSchema = z.object({
   step: z.number().positive().optional(),
 });
 
+const searchStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('search'),
+  options: z.array(selectOptionSchema).min(1),
+  default: z.string().optional(),
+  placeholder: z.string().optional(),
+});
+
+const editorStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('editor'),
+  default: z.string().optional(),
+  validate: z.array(validationRuleSchema).optional(),
+});
+
+const pathStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('path'),
+  default: z.string().optional(),
+  placeholder: z.string().optional(),
+  validate: z.array(validationRuleSchema).optional(),
+});
+
+const toggleStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('toggle'),
+  default: z.boolean().optional(),
+  active: z.string().optional(),
+  inactive: z.string().optional(),
+});
+
 const stepConfigSchema = z.discriminatedUnion('type', [
   textStepSchema,
   selectStepSchema,
@@ -111,6 +144,10 @@ const stepConfigSchema = z.discriminatedUnion('type', [
   confirmStepSchema,
   passwordStepSchema,
   numberStepSchema,
+  searchStepSchema,
+  editorStepSchema,
+  pathStepSchema,
+  toggleStepSchema,
 ]);
 
 const hexColorSchema = z.string().regex(
@@ -136,6 +173,12 @@ const themeConfigSchema = z.object({
   }).optional(),
 });
 
+const preFlightCheckSchema: z.ZodType<PreFlightCheck> = z.object({
+  name: z.string(),
+  run: z.string(),
+  message: z.string(),
+});
+
 const wizardConfigSchema = z.object({
   meta: z.object({
     name: z.string(),
@@ -148,6 +191,8 @@ const wizardConfigSchema = z.object({
     format: z.enum(['json', 'env', 'yaml']),
     path: z.string().optional(),
   }).optional(),
+  extends: z.string().optional(),
+  checks: z.array(preFlightCheckSchema).optional(),
 }).superRefine((config, ctx) => {
   const stepIds = new Set<string>();
 
@@ -251,6 +296,7 @@ export {
   selectOptionSchema,
   stepConfigSchema,
   themeConfigSchema,
+  preFlightCheckSchema,
   wizardConfigSchema,
 };
 

@@ -5,16 +5,22 @@ import {
   confirm,
   password,
   number,
+  search,
+  editor,
 } from '@inquirer/prompts';
 import type {
   ConfirmStepConfig,
+  EditorStepConfig,
   MultiSelectStepConfig,
   NumberStepConfig,
   PasswordStepConfig,
+  PathStepConfig,
   ResolvedTheme,
+  SearchStepConfig,
   SelectStepConfig,
   StepConfig,
   TextStepConfig,
+  ToggleStepConfig,
   WizardRenderer,
   WizardState,
 } from '../types';
@@ -23,17 +29,17 @@ export class InquirerRenderer implements WizardRenderer {
   renderStepHeader(
     stepIndex: number,
     totalVisible: number,
-    _message: string,
+    message: string,
     theme: ResolvedTheme,
   ): void {
-    const filled = theme.icons.stepDone.repeat(stepIndex);
-    const current = theme.icons.step;
-    const remaining = theme.icons.stepPending.repeat(
-      Math.max(0, totalVisible - stepIndex - 1),
-    );
-    const progress = `${theme.success(filled)}${theme.primary(current)}${theme.muted(remaining)}`;
-    const label = theme.muted(`Step ${String(stepIndex + 1)}/${String(totalVisible)}`);
-    console.log(`\n  ${progress}  ${label}`);
+    const barWidth = 20;
+    const filledCount = totalVisible > 0 ? Math.round((stepIndex / totalVisible) * barWidth) : 0;
+    const remainingCount = barWidth - filledCount;
+    const filledBar = theme.success('\u2588'.repeat(filledCount));
+    const remainingBar = theme.muted('\u2591'.repeat(remainingCount));
+    const counter = theme.muted(`Step ${String(stepIndex + 1)}/${String(totalVisible)}`);
+    const stepMessage = theme.muted(`\u2014 ${message}`);
+    console.log(`\n  [${filledBar}${remainingBar}]  ${counter} ${stepMessage}`);
   }
 
   async renderText(
@@ -144,6 +150,86 @@ export class InquirerRenderer implements WizardRenderer {
     });
 
     return result ?? defaultValue ?? 0;
+  }
+
+  async renderSearch(
+    step: SearchStepConfig,
+    _state: WizardState,
+    theme: ResolvedTheme,
+  ): Promise<string> {
+    return search({
+      message: step.message,
+      source: (input) => {
+        const term = (input ?? '').toLowerCase();
+        return step.options
+          .filter((opt) => !opt.disabled && opt.label.toLowerCase().includes(term))
+          .map((opt) => ({
+            name: opt.label,
+            value: opt.value,
+            description: opt.hint,
+          }));
+      },
+      theme: { prefix: { idle: theme.icons.pointer, done: theme.icons.stepDone } },
+    });
+  }
+
+  async renderEditor(
+    step: EditorStepConfig,
+    _state: WizardState,
+    theme: ResolvedTheme,
+  ): Promise<string> {
+    return editor({
+      message: step.message,
+      default: step.default,
+      theme: { prefix: { idle: theme.icons.pointer, done: theme.icons.stepDone } },
+    });
+  }
+
+  async renderPath(
+    step: PathStepConfig,
+    state: WizardState,
+    theme: ResolvedTheme,
+  ): Promise<string> {
+    const existingAnswer = state.answers[step.id];
+    const defaultValue =
+      typeof existingAnswer === 'string' ? existingAnswer : step.default;
+
+    return input({
+      message: step.message,
+      default: defaultValue,
+      theme: { prefix: { idle: theme.icons.pointer, done: theme.icons.stepDone } },
+    });
+  }
+
+  async renderToggle(
+    step: ToggleStepConfig,
+    state: WizardState,
+    theme: ResolvedTheme,
+  ): Promise<boolean> {
+    const existingAnswer = state.answers[step.id];
+    const activeLabel = step.active ?? 'On';
+    const inactiveLabel = step.inactive ?? 'Off';
+
+    const defaultValue =
+      typeof existingAnswer === 'boolean'
+        ? (existingAnswer ? activeLabel : inactiveLabel)
+        : (step.default === true ? activeLabel : inactiveLabel);
+
+    const result = await select({
+      message: step.message,
+      choices: [
+        { name: activeLabel, value: activeLabel },
+        { name: inactiveLabel, value: inactiveLabel },
+      ],
+      default: defaultValue,
+      theme: { prefix: { idle: theme.icons.pointer, done: theme.icons.stepDone } },
+    });
+
+    return result === activeLabel;
+  }
+
+  renderGroupHeader(group: string, theme: ResolvedTheme): void {
+    console.log(`\n  ${theme.accent('\u2500\u2500')} ${theme.bold(group)} ${theme.accent('\u2500\u2500')}\n`);
   }
 
   renderSummary(

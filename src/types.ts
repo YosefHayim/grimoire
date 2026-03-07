@@ -42,6 +42,7 @@ export interface BaseStepConfig {
   when?: Condition;
   keepValuesOnPrevious?: boolean;
   required?: boolean;
+  group?: string;
 }
 
 export interface TextStepConfig extends BaseStepConfig {
@@ -84,13 +85,44 @@ export interface NumberStepConfig extends BaseStepConfig {
   step?: number;
 }
 
+export interface SearchStepConfig extends BaseStepConfig {
+  type: 'search';
+  options: SelectOption[];
+  default?: string;
+  placeholder?: string;
+}
+
+export interface EditorStepConfig extends BaseStepConfig {
+  type: 'editor';
+  default?: string;
+  validate?: ValidationRule[];
+}
+
+export interface PathStepConfig extends BaseStepConfig {
+  type: 'path';
+  default?: string;
+  placeholder?: string;
+  validate?: ValidationRule[];
+}
+
+export interface ToggleStepConfig extends BaseStepConfig {
+  type: 'toggle';
+  default?: boolean;
+  active?: string;
+  inactive?: string;
+}
+
 export type StepConfig =
   | TextStepConfig
   | SelectStepConfig
   | MultiSelectStepConfig
   | ConfirmStepConfig
   | PasswordStepConfig
-  | NumberStepConfig;
+  | NumberStepConfig
+  | SearchStepConfig
+  | EditorStepConfig
+  | PathStepConfig
+  | ToggleStepConfig;
 
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
@@ -112,6 +144,14 @@ export interface ThemeConfig {
   };
 }
 
+// ─── Pre-Flight Check ────────────────────────────────────────────────────────
+
+export interface PreFlightCheck {
+  name: string;
+  run: string;
+  message: string;
+}
+
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
@@ -119,6 +159,8 @@ export interface WizardConfig {
   theme?: ThemeConfig;
   steps: StepConfig[];
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };
+  extends?: string;
+  checks?: PreFlightCheck[];
 }
 
 // ─── Runtime State ───────────────────────────────────────────────────────────
@@ -162,7 +204,12 @@ export interface WizardRenderer {
   renderConfirm(step: ConfirmStepConfig, state: WizardState, theme: ResolvedTheme): Promise<boolean>;
   renderPassword(step: PasswordStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
   renderNumber(step: NumberStepConfig, state: WizardState, theme: ResolvedTheme): Promise<number>;
+  renderSearch(step: SearchStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
+  renderEditor(step: EditorStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
+  renderPath(step: PathStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
+  renderToggle(step: ToggleStepConfig, state: WizardState, theme: ResolvedTheme): Promise<boolean>;
   renderStepHeader(stepIndex: number, totalVisible: number, message: string, theme: ResolvedTheme): void;
+  renderGroupHeader(group: string, theme: ResolvedTheme): void;
   renderSummary(answers: Record<string, unknown>, steps: StepConfig[], theme: ResolvedTheme): void;
   clear(): void;
 }

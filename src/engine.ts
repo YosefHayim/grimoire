@@ -37,7 +37,7 @@ export function validateStepAnswer(
     }
   }
 
-  if ((step.type === 'text' || step.type === 'password') && step.validate) {
+  if ((step.type === 'text' || step.type === 'password' || step.type === 'editor' || step.type === 'path') && step.validate) {
     const strValue = typeof value === 'string' ? value : String(value ?? '');
     for (const rule of step.validate) {
       const error = applyValidationRule(rule, strValue);

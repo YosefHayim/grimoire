@@ -1,0 +1,857 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://grimoire-wizard.dev/schema/grimoire.schema.json",
+  "title": "Grimoire Wizard Configuration",
+  "description": "Schema for Grimoire Wizard YAML/JSON configuration files",
+  "type": "object",
+  "required": ["meta", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the wizard",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the wizard"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the wizard configuration"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what the wizard does"
+        }
+      }
+    },
+    "extends": {
+      "type": "string",
+      "description": "Path to a base wizard configuration to extend"
+    },
+    "theme": {
+      "type": "object",
+      "description": "Theme configuration for the wizard UI",
+      "additionalProperties": false,
+      "properties": {
+        "tokens": {
+          "type": "object",
+          "description": "Color tokens for theming",
+          "additionalProperties": false,
+          "properties": {
+            "primary": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Primary color (hex format, e.g., #FF0000)"
+            },
+            "success": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Success color (hex format)"
+            },
+            "error": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Error color (hex format)"
+            },
+            "warning": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Warning color (hex format)"
+            },
+            "info": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Info color (hex format)"
+            },
+            "muted": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Muted color (hex format)"
+            },
+            "accent": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "Accent color (hex format)"
+            }
+          }
+        },
+        "icons": {
+          "type": "object",
+          "description": "Icon characters for UI elements",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "description": "Icon for current step"
+            },
+            "stepDone": {
+              "type": "string",
+              "description": "Icon for completed step"
+            },
+            "stepPending": {
+              "type": "string",
+              "description": "Icon for pending step"
+            },
+            "pointer": {
+              "type": "string",
+              "description": "Icon for pointer/cursor"
+            }
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "description": "Pre-flight checks to run before the wizard",
+      "items": {
+        "type": "object",
+        "required": ["name", "run", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the check"
+          },
+          "run": {
+            "type": "string",
+            "description": "Command to run for the check"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message to display if check fails"
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Array of wizard steps",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/textStep" },
+          { "$ref": "#/definitions/selectStep" },
+          { "$ref": "#/definitions/multiselectStep" },
+          { "$ref": "#/definitions/confirmStep" },
+          { "$ref": "#/definitions/passwordStep" },
+          { "$ref": "#/definitions/numberStep" },
+          { "$ref": "#/definitions/searchStep" },
+          { "$ref": "#/definitions/editorStep" },
+          { "$ref": "#/definitions/pathStep" },
+          { "$ref": "#/definitions/toggleStep" }
+        ]
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Output configuration for wizard results",
+      "required": ["format"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["json", "env", "yaml"],
+          "description": "Output format for the wizard results"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path where output should be written"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "baseStep": {
+      "type": "object",
+      "required": ["id", "type", "message"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this step"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of step"
+        },
+        "message": {
+          "type": "string",
+          "description": "Question or prompt message for the user"
+        },
+        "next": {
+          "type": "string",
+          "description": "ID of the next step to navigate to (or '__done__' to finish)"
+        },
+        "when": {
+          "$ref": "#/definitions/condition",
+          "description": "Condition that must be true for this step to be shown"
+        },
+        "keepValuesOnPrevious": {
+          "type": "boolean",
+          "description": "Whether to keep values when navigating back"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this step is required"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group name for organizing steps"
+        }
+      }
+    },
+    "textStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "text"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "placeholder": {
+              "type": "string",
+              "description": "Placeholder text for input"
+            },
+            "default": {
+              "type": "string",
+              "description": "Default value"
+            },
+            "validate": {
+              "type": "array",
+              "description": "Validation rules",
+              "items": {
+                "$ref": "#/definitions/validationRule"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "selectStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type", "options"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "select"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Array of selectable options",
+              "items": {
+                "$ref": "#/definitions/selectOption"
+              }
+            },
+            "default": {
+              "type": "string",
+              "description": "Default selected option value"
+            },
+            "routes": {
+              "type": "object",
+              "description": "Map of option values to next step IDs for conditional routing",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "multiselectStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type", "options"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "multiselect"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Array of selectable options",
+              "items": {
+                "$ref": "#/definitions/selectOption"
+              }
+            },
+            "default": {
+              "type": "array",
+              "description": "Default selected option values",
+              "items": {
+                "type": "string"
+              }
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Minimum number of selections required"
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of selections allowed"
+            }
+          }
+        }
+      ]
+    },
+    "confirmStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "confirm"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "default": {
+              "type": "boolean",
+              "description": "Default value (true/false)"
+            }
+          }
+        }
+      ]
+    },
+    "passwordStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "password"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "validate": {
+              "type": "array",
+              "description": "Validation rules",
+              "items": {
+                "$ref": "#/definitions/validationRule"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "numberStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "number"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "default": {
+              "type": "number",
+              "description": "Default numeric value"
+            },
+            "min": {
+              "type": "number",
+              "description": "Minimum allowed value"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum allowed value"
+            },
+            "step": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Step increment for number input"
+            }
+          }
+        }
+      ]
+    },
+    "searchStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type", "options"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "search"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Array of searchable options",
+              "items": {
+                "$ref": "#/definitions/selectOption"
+              }
+            },
+            "default": {
+              "type": "string",
+              "description": "Default selected option value"
+            },
+            "placeholder": {
+              "type": "string",
+              "description": "Placeholder text for search input"
+            }
+          }
+        }
+      ]
+    },
+    "editorStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "editor"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "default": {
+              "type": "string",
+              "description": "Default text content"
+            },
+            "validate": {
+              "type": "array",
+              "description": "Validation rules",
+              "items": {
+                "$ref": "#/definitions/validationRule"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pathStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "path"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "default": {
+              "type": "string",
+              "description": "Default path value"
+            },
+            "placeholder": {
+              "type": "string",
+              "description": "Placeholder text for path input"
+            },
+            "validate": {
+              "type": "array",
+              "description": "Validation rules",
+              "items": {
+                "$ref": "#/definitions/validationRule"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "toggleStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "toggle"
+            },
+            "message": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true,
+            "default": {
+              "type": "boolean",
+              "description": "Default toggle state"
+            },
+            "active": {
+              "type": "string",
+              "description": "Label for active/on state"
+            },
+            "inactive": {
+              "type": "string",
+              "description": "Label for inactive/off state"
+            }
+          }
+        }
+      ]
+    },
+    "selectOption": {
+      "type": "object",
+      "required": ["value", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value returned when this option is selected"
+        },
+        "label": {
+          "type": "string",
+          "description": "The display label for this option"
+        },
+        "hint": {
+          "type": "string",
+          "description": "Optional hint text displayed below the label"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Whether this option is disabled"
+        }
+      }
+    },
+    "validationRule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["rule"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "required"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "minLength"
+            },
+            "value": {
+              "type": "number",
+              "description": "Minimum string length"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "maxLength"
+            },
+            "value": {
+              "type": "number",
+              "description": "Maximum string length"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "pattern"
+            },
+            "value": {
+              "type": "string",
+              "description": "Regular expression pattern"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "min"
+            },
+            "value": {
+              "type": "number",
+              "description": "Minimum numeric value"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {
+              "const": "max"
+            },
+            "value": {
+              "type": "number",
+              "description": "Maximum numeric value"
+            },
+            "message": {
+              "type": "string",
+              "description": "Custom error message"
+            }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["field", "equals"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check (e.g., 'stepId' or 'stepId.property')"
+            },
+            "equals": {
+              "description": "Value to compare for equality"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "notEquals"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "notEquals": {
+              "description": "Value to compare for inequality"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "includes"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "includes": {
+              "description": "Value that should be included in array or string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "notIncludes"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "notIncludes": {
+              "description": "Value that should not be included in array or string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "greaterThan"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "greaterThan": {
+              "type": "number",
+              "description": "Value to compare (greater than)"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "lessThan"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "lessThan": {
+              "type": "number",
+              "description": "Value to compare (less than)"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "isEmpty"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "isEmpty": {
+              "const": true,
+              "description": "Check if field is empty"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["field", "isNotEmpty"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Step ID or path to check"
+            },
+            "isNotEmpty": {
+              "const": true,
+              "description": "Check if field is not empty"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["all"],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "description": "All conditions must be true",
+              "items": {
+                "$ref": "#/definitions/condition"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["any"],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "description": "Any condition must be true",
+              "items": {
+                "$ref": "#/definitions/condition"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["not"],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/definitions/condition",
+              "description": "Negate the condition"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

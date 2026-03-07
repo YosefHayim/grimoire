@@ -1,11 +1,19 @@
-# grimoire
+<p align="center">
+  <img src="grimoire-pro.png" alt="Grimoire" width="720" />
+</p>
 
-A wizard's spell book. Your config is the spell, the CLI is the magic.
+<h1 align="center">grimoire</h1>
 
-[![npm version](https://img.shields.io/npm/v/grimoire-wizard)](https://www.npmjs.com/package/grimoire-wizard)
-[![license](https://img.shields.io/npm/l/grimoire-wizard)](./LICENSE)
-[![node](https://img.shields.io/node/v/grimoire-wizard)](https://nodejs.org)
-[![tests](https://img.shields.io/github/actions/workflow/status/YosefHayim/grimoire/ci.yml?label=tests)](https://github.com/YosefHayim/grimoire/actions)
+<p align="center">
+  A wizard's spell book. Your config is the spell, the CLI is the magic.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/grimoire-wizard"><img src="https://img.shields.io/npm/v/grimoire-wizard" alt="npm version" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/grimoire-wizard" alt="license" /></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/grimoire-wizard" alt="node" /></a>
+  <a href="https://github.com/YosefHayim/grimoire/actions"><img src="https://img.shields.io/github/actions/workflow/status/YosefHayim/grimoire/ci.yml?label=tests" alt="tests" /></a>
+</p>
 
 ---
 

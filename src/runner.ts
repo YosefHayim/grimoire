@@ -3,9 +3,11 @@ import { createWizardState, getVisibleSteps, wizardReducer } from './engine';
 import { resolveTheme } from './theme';
 import { InquirerRenderer } from './renderers/inquirer';
 import { resolveEnvDefault, resolveEnvDefaultBoolean, resolveEnvDefaultNumber } from './resolve';
+import { resolveTemplate } from './template';
 import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
-import type { PreFlightCheck, StepConfig, WizardConfig, WizardRenderer, WizardState, ResolvedTheme } from './types';
+import { evaluateCondition } from './conditions';
+import type { ActionConfig, PreFlightCheck, StepConfig, WizardConfig, WizardRenderer, WizardState, ResolvedTheme } from './types';
 
 export interface RunWizardOptions {
   renderer?: WizardRenderer;
@@ -115,7 +117,8 @@ export async function runWizard(
         previousGroup = currentStep.group;
 
         const stepIndex = visibleSteps.findIndex((s) => s.id === state.currentStepId);
-        renderer.renderStepHeader(stepIndex, visibleSteps.length, currentStep.message, theme);
+        const resolvedMessage = resolveTemplate(currentStep.message, state.answers);
+        renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme);
       }
 
       const pluginStep = getPluginStep(currentStep.type);
@@ -180,6 +183,10 @@ export async function runWizard(
 
     if (state.status === 'done' && !quiet) {
       renderer.renderSummary(state.answers, config.steps, theme);
+    }
+
+    if (state.status === 'done' && config.actions && config.actions.length > 0 && !isMock) {
+      await executeActions(config.actions, state.answers, theme);
     }
 
     return state.answers;
@@ -256,6 +263,32 @@ function resolveStepDefaults(step: StepConfig): StepConfig {
     case 'password':
       return step;
   }
+}
+
+async function executeActions(
+  actions: ActionConfig[],
+  answers: Record<string, unknown>,
+  theme: ResolvedTheme,
+): Promise<void> {
+  console.log(`\n  ${theme.bold('Running actions...')}\n`);
+
+  for (const action of actions) {
+    if (action.when && !evaluateCondition(action.when, answers)) {
+      continue;
+    }
+
+    const resolvedCommand = resolveTemplate(action.run, answers);
+    const label = action.name ?? resolvedCommand;
+
+    try {
+      execSync(resolvedCommand, { stdio: 'pipe' });
+      console.log(`  ${theme.success('✓')} ${label}`);
+    } catch {
+      console.log(`  ${theme.error('✗')} ${label}`);
+      throw new Error(`Action failed: ${label}`);
+    }
+  }
+  console.log();
 }
 
 function printWizardHeader(config: WizardConfig, theme: ResolvedTheme): void {

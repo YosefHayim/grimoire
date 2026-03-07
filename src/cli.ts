@@ -265,6 +265,16 @@ function printDryRun(config: WizardConfig): void {
   }
 
   console.log();
+
+  if (config.actions && config.actions.length > 0) {
+    console.log(`  ${theme.bold('Post-wizard actions:')}`);
+    for (const action of config.actions) {
+      const label = action.name ?? action.run;
+      const whenStr = action.when ? `  [when: ${formatCondition(action.when)}]` : '';
+      console.log(`    ${theme.muted('•')} ${label}: ${theme.muted(action.run)}${whenStr}`);
+    }
+    console.log();
+  }
 }
 
 function formatCondition(condition: Condition): string {

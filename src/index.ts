@@ -20,6 +20,7 @@ export type {
   WizardTransition,
   WizardRenderer,
   PreFlightCheck,
+  ActionConfig,
 } from './types';
 
 export { parseWizardConfig } from './schema';
@@ -40,3 +41,4 @@ export { defineWizard } from './define';
 export { InquirerRenderer } from './renderers/inquirer';
 export type { GrimoirePlugin, StepPlugin } from './plugins';
 export { registerPlugin, getPluginStep, clearPlugins } from './plugins';
+export { resolveTemplate } from './template';

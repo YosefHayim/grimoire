@@ -101,6 +101,7 @@ function mergeConfigs(parent: WizardConfig, child: WizardConfig): WizardConfig {
       ...(parent.checks ?? []),
       ...(child.checks ?? []),
     ],
+    actions: child.actions ?? parent.actions,
   };
 }
 

@@ -161,6 +161,29 @@
           "description": "Path where output should be written"
         }
       }
+    },
+    "actions": {
+      "type": "array",
+      "description": "Post-wizard actions to run after completion",
+      "items": {
+        "type": "object",
+        "required": ["run"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name for the action"
+          },
+          "run": {
+            "type": "string",
+            "description": "Shell command to execute. Supports {{stepId}} template interpolation."
+          },
+          "when": {
+            "$ref": "#/definitions/condition",
+            "description": "Condition that must be true for the action to run"
+          }
+        }
+      }
     }
   },
   "definitions": {

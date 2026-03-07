@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type {
+  ActionConfig,
   Condition,
   PreFlightCheck,
   ValidationRule,
@@ -179,6 +180,12 @@ const preFlightCheckSchema: z.ZodType<PreFlightCheck> = z.object({
   message: z.string(),
 });
 
+const actionConfigSchema: z.ZodType<ActionConfig> = z.object({
+  name: z.string().optional(),
+  run: z.string(),
+  when: conditionSchema.optional(),
+});
+
 const wizardConfigSchema = z.object({
   meta: z.object({
     name: z.string(),
@@ -193,6 +200,7 @@ const wizardConfigSchema = z.object({
   }).optional(),
   extends: z.string().optional(),
   checks: z.array(preFlightCheckSchema).optional(),
+  actions: z.array(actionConfigSchema).optional(),
 }).superRefine((config, ctx) => {
   const stepIds = new Set<string>();
 
@@ -254,6 +262,14 @@ const wizardConfigSchema = z.object({
       });
     }
   });
+
+  if (config.actions) {
+    config.actions.forEach((action, i) => {
+      if (action.when) {
+        collectConditionFieldIssues(action.when, stepIds, ctx, ['actions', i, 'when']);
+      }
+    });
+  }
 });
 
 function collectConditionFieldIssues(
@@ -291,6 +307,7 @@ function collectConditionFieldIssues(
 }
 
 export {
+  actionConfigSchema,
   conditionSchema,
   validationRuleSchema,
   selectOptionSchema,

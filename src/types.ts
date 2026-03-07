@@ -152,6 +152,14 @@ export interface PreFlightCheck {
   message: string;
 }
 
+// ─── Action Config ───────────────────────────────────────────────────────────
+
+export interface ActionConfig {
+  name?: string;
+  run: string;
+  when?: Condition;
+}
+
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
@@ -161,6 +169,7 @@ export interface WizardConfig {
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };
   extends?: string;
   checks?: PreFlightCheck[];
+  actions?: ActionConfig[];
 }
 
 // ─── Runtime State ───────────────────────────────────────────────────────────

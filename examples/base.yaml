@@ -1,0 +1,28 @@
+meta:
+  name: "Base Project Wizard"
+  description: "Base configuration shared across projects"
+
+theme:
+  tokens:
+    primary: "#7C3AED"
+    success: "#10B981"
+
+steps:
+  - id: name
+    type: text
+    message: "Project name?"
+    validate:
+      - rule: required
+
+  - id: description
+    type: text
+    message: "Description?"
+    required: false
+
+  - id: confirm
+    type: confirm
+    message: "Continue?"
+    next: __done__
+
+output:
+  format: json

@@ -1,0 +1,34 @@
+extends: ./base.yaml
+
+meta:
+  name: "Extended Project Wizard"
+  description: "Extends base config with additional steps"
+
+steps:
+  - id: name
+    type: text
+    message: "Project name?"
+    validate:
+      - rule: required
+
+  - id: language
+    type: select
+    message: "Language?"
+    options:
+      - { value: typescript, label: "TypeScript" }
+      - { value: javascript, label: "JavaScript" }
+      - { value: python, label: "Python" }
+
+  - id: description
+    type: text
+    message: "Description?"
+    required: false
+
+  - id: confirm
+    type: confirm
+    message: "Create project?"
+    next: __done__
+
+output:
+  format: yaml
+  path: project-config.yaml

@@ -1,0 +1,34 @@
+meta:
+  name: "Deployment Wizard"
+  description: "Deploy with pre-flight safety checks"
+
+checks:
+  - name: Node.js installed
+    run: node --version
+    message: "Node.js is required. Install from https://nodejs.org"
+  - name: Git available
+    run: git --version
+    message: "Git is required. Install from https://git-scm.com"
+
+steps:
+  - id: environment
+    type: select
+    message: "Deploy to which environment?"
+    options:
+      - { value: staging, label: "Staging" }
+      - { value: production, label: "Production" }
+
+  - id: version
+    type: text
+    message: "Version tag?"
+    default: "latest"
+    validate:
+      - rule: required
+
+  - id: confirm
+    type: confirm
+    message: "Deploy now?"
+    next: __done__
+
+output:
+  format: json

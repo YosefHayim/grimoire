@@ -187,6 +187,13 @@ export interface ActionConfig {
   when?: Condition;
 }
 
+// ─── OnComplete Handler ─────────────────────────────────────────────────────
+
+export type OnCompleteHandler = (context: {
+  answers: Record<string, unknown>;
+  config: WizardConfig;
+}) => Promise<void> | void;
+
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
@@ -197,6 +204,7 @@ export interface WizardConfig {
   extends?: string;
   checks?: PreFlightCheck[];
   actions?: ActionConfig[];
+  onComplete?: string;
 }
 
 // ─── Runtime State ───────────────────────────────────────────────────────────
@@ -235,7 +243,10 @@ export type WizardEvent =
   | { type: 'check:fail'; name: string; message: string }
   | { type: 'actions:start' }
   | { type: 'action:pass'; name: string }
-  | { type: 'action:fail'; name: string };
+  | { type: 'action:fail'; name: string }
+  | { type: 'oncomplete:start' }
+  | { type: 'oncomplete:pass' }
+  | { type: 'oncomplete:fail'; error: string };
 
 // ─── Resolved Theme ──────────────────────────────────────────────────────────
 

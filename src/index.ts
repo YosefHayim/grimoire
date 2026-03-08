@@ -26,6 +26,7 @@ export type {
   WizardRenderer,
   PreFlightCheck,
   ActionConfig,
+  OnCompleteHandler,
 } from './types';
 
 export { parseWizardConfig } from './schema';

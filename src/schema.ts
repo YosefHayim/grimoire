@@ -231,6 +231,7 @@ const wizardConfigSchema = z.object({
   extends: z.string().optional(),
   checks: z.array(preFlightCheckSchema).optional(),
   actions: z.array(actionConfigSchema).optional(),
+  onComplete: z.string().optional(),
 }).superRefine((config, ctx) => {
   const stepIds = new Set<string>();
 

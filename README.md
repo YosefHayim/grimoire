@@ -1549,6 +1549,18 @@ grimoire run examples/yaml/pipeline.yaml
 
 ---
 
+## AI Agent Integration
+
+Building wizard configs with an AI assistant? Give it this reference:
+
+```
+https://raw.githubusercontent.com/YosefHayim/grimoire/main/docs/GRIMOIRE_REFERENCE.md
+```
+
+This single file contains the complete grimoire-wizard schema, all step types, conditions, actions, handler contracts, and annotated examples — everything an AI agent needs to generate correct configs in one shot.
+
+---
+
 ## License
 
 MIT. PRs welcome.

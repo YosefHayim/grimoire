@@ -53,7 +53,7 @@ describe('E2E: basic.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/basic.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/basic.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Project Setup Wizard');
@@ -77,7 +77,7 @@ describe('E2E: conditional.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/conditional.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/conditional.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['project-type']).toBe('web');
@@ -95,7 +95,7 @@ describe('E2E: conditional.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/conditional.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/conditional.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['project-type']).toBe('cli');
@@ -117,7 +117,7 @@ describe('E2E: themed.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/themed.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/themed.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Catppuccin Setup');
@@ -136,7 +136,7 @@ describe('E2E: with-checks.yaml with mock', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/with-checks.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/with-checks.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['environment']).toBe('staging');
@@ -146,7 +146,7 @@ describe('E2E: with-checks.yaml with mock', () => {
 
 describe('E2E: --dry-run', () => {
   it('outputs step plan without running prompts', () => {
-    const output = run('run examples/basic.yaml --dry-run');
+    const output = run('run examples/yaml/basic.yaml --dry-run');
 
     expect(output).toContain('Dry Run');
     expect(output).toContain('Project Setup Wizard');
@@ -170,7 +170,7 @@ describe('E2E: invalid config', () => {
 
 describe('E2E: mock with missing required answers', () => {
   it('errors when required step has no mock answer and no default', () => {
-    const output = runExpectFail(`run examples/basic.yaml --mock '{}' --json`);
+    const output = runExpectFail(`run examples/yaml/basic.yaml --mock '{}' --json`);
     const result = JSON.parse(output) as { ok: boolean; error: string };
 
     expect(result.ok).toBe(false);
@@ -188,7 +188,7 @@ describe('E2E: extended.yaml (config inheritance)', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/extended.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/extended.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Extended Project Wizard');
@@ -209,7 +209,7 @@ describe('E2E: --json flag', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/basic.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/basic.yaml --mock '${mock}' --json`);
 
     expect(result).toHaveProperty('ok', true);
     expect(result).toHaveProperty('wizard');
@@ -219,7 +219,7 @@ describe('E2E: --json flag', () => {
   });
 
   it('emits structured JSON envelope on error', () => {
-    const output = runExpectFail(`run examples/basic.yaml --mock '{}' --json`);
+    const output = runExpectFail(`run examples/yaml/basic.yaml --mock '{}' --json`);
     const result = JSON.parse(output) as { ok: boolean; error: string };
 
     expect(result).toHaveProperty('ok', false);
@@ -229,8 +229,13 @@ describe('E2E: --json flag', () => {
 });
 
 describe('E2E: validate all example configs', () => {
-  const exampleFiles = readdirSync(EXAMPLES)
-    .filter((f) => f.endsWith('.yaml') || f.endsWith('.json'));
+  const yamlFiles = readdirSync(resolve(EXAMPLES, 'yaml'))
+    .filter((f) => f.endsWith('.yaml'))
+    .map((f) => `yaml/${f}`);
+  const jsonFiles = readdirSync(resolve(EXAMPLES, 'json'))
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => `json/${f}`);
+  const exampleFiles = [...yamlFiles, ...jsonFiles];
 
   it.each(exampleFiles)('parses %s without errors', async (filename) => {
     const fullPath = resolve(EXAMPLES, filename);
@@ -241,5 +246,305 @@ describe('E2E: validate all example configs', () => {
     expect(config.steps.length).toBeGreaterThan(0);
 
     parseWizardConfig(config);
+  });
+});
+
+describe('E2E: clack renderer', () => {
+  it('runs basic wizard with clack renderer in mock mode', () => {
+    const mock = JSON.stringify({
+      'project-name': 'clack-test',
+      'description': 'Testing clack',
+      'language': 'typescript',
+      'features': ['linting'],
+      'license': 'mit',
+      'confirm': true,
+    });
+
+    const output = run(`run examples/yaml/basic.yaml --renderer clack --mock '${mock}' --json`);
+
+    // Clack renderer outputs decorative lines before JSON
+    expect(output).toContain('┌');
+    expect(output).toContain('◇');
+
+    const jsonMatch = output.match(/\n(\{[\s\S]*\})\s*$/);
+    const result = JSON.parse(jsonMatch![1]) as { ok: boolean; wizard?: string; answers?: Record<string, unknown> };
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Project Setup Wizard');
+    expect(result.answers?.['project-name']).toBe('clack-test');
+  });
+});
+
+describe('E2E: themed-catppuccin.yaml with preset', () => {
+  it('runs wizard with catppuccin preset', () => {
+    const mock = JSON.stringify({
+      'project-name': 'catppuccin-app',
+      'framework': 'nextjs',
+      'confirm': true,
+    });
+
+    const result = runJson(`run examples/yaml/themed-catppuccin.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Catppuccin Themed Setup');
+    expect(result.answers?.['project-name']).toBe('catppuccin-app');
+    expect(result.answers?.['framework']).toBe('nextjs');
+  });
+});
+
+describe('E2E: note step type', () => {
+  it('validates config with note steps', () => {
+    const output = run('validate examples/yaml/pipeline.yaml');
+    expect(output).toContain('Valid wizard config');
+    expect(output).toContain('Pipeline Demo');
+  });
+
+  it('runs pipeline demo with note steps in mock mode', () => {
+    const mock = JSON.stringify({
+      'project-name': 'pipeline-app',
+      'language': 'typescript',
+      'confirm': true,
+    });
+
+    const result = runJson(`run examples/yaml/pipeline.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Pipeline Demo');
+    expect(result.answers?.['project-name']).toBe('pipeline-app');
+  });
+});
+
+describe('E2E: wizard pipelines', () => {
+  it('runs pipeline with file path configs', async () => {
+    const { runPipeline } = await import('../pipeline');
+
+    const results = await runPipeline([
+      {
+        config: resolve(EXAMPLES, 'yaml', 'themed-catppuccin.yaml'),
+        mockAnswers: { 'project-name': 'pipe-app', 'framework': 'astro', 'confirm': true },
+      },
+    ]);
+
+    expect(results['Catppuccin Themed Setup']).toBeDefined();
+    expect(results['Catppuccin Themed Setup']['project-name']).toBe('pipe-app');
+  });
+});
+
+describe('E2E: clack renderer with preset theme', () => {
+  it('combines clack renderer with catppuccin preset', () => {
+    const mock = JSON.stringify({
+      'project-name': 'clack-catppuccin',
+      'framework': 'remix',
+      'confirm': true,
+    });
+
+    const output = run(`run examples/yaml/themed-catppuccin.yaml --renderer clack --mock '${mock}' --json`);
+
+    expect(output).toContain('┌');
+    expect(output).toContain('◇');
+
+    const jsonMatch = output.match(/\n(\{[\s\S]*\})\s*$/);
+    const result = JSON.parse(jsonMatch![1]) as { ok: boolean; answers?: Record<string, unknown> };
+
+    expect(result.ok).toBe(true);
+    expect(result.answers?.['project-name']).toBe('clack-catppuccin');
+    expect(result.answers?.['framework']).toBe('remix');
+  });
+});
+
+describe('E2E: appstore-screenshot-wizard.yaml with mock answers', () => {
+  it('runs with gemini provider and custom devices', () => {
+    const mock = JSON.stringify({
+      'generation-mode': 'app_store_screenshots',
+      'platform-preset': 'custom',
+      'providers': ['gemini'],
+      'app-name': 'TestApp',
+      'app-description': 'A test application for screenshots',
+      'visual-style': 'photorealistic',
+      'screenshot-count': 5,
+      'reference-images': 'none',
+      'design-reference': 'none',
+      'device-targets': ['iphone', 'ipad'],
+      'gemini-image-model': 'gemini-3.1-flash-image-preview',
+      'gemini-text-model': 'gemini-2.5-flash',
+      'headline-prefix': '',
+      'cta-badge': '',
+      'want-locales': false,
+      'advanced-options': [],
+      'confirm-generate': true,
+      'save-template-name': '',
+    });
+
+    const result = runJson(`run examples/yaml/appstore-screenshot-wizard.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('App Store Screenshot Wizard');
+    expect(result.answers?.['app-name']).toBe('TestApp');
+    expect(result.answers?.['providers']).toEqual(['gemini']);
+    expect(result.answers?.['visual-style']).toBe('photorealistic');
+    // OpenAI model steps should be skipped (provider not selected)
+    expect(result.answers?.['openai-image-model']).toBeUndefined();
+    expect(result.answers?.['openai-text-model']).toBeUndefined();
+  });
+
+  it('skips platform-preset for non-app-store mode', () => {
+    const mock = JSON.stringify({
+      'generation-mode': 'web_ui',
+      'providers': ['gemini'],
+      'app-name': 'WebApp',
+      'app-description': 'A web application for testing',
+      'visual-style': 'flat-2d',
+      'screenshot-count': 3,
+      'reference-images': 'none',
+      'design-reference': 'none',
+      'device-targets': ['iphone'],
+      'gemini-image-model': 'gemini-3.1-flash-image-preview',
+      'gemini-text-model': 'gemini-2.5-flash',
+      'headline-prefix': '',
+      'cta-badge': '',
+      'want-locales': false,
+      'advanced-options': [],
+      'confirm-generate': true,
+      'save-template-name': '',
+    });
+
+    const result = runJson(`run examples/yaml/appstore-screenshot-wizard.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    // platform-preset should be skipped for non-app_store_screenshots mode
+    expect(result.answers?.['platform-preset']).toBeUndefined();
+    expect(result.answers?.['generation-mode']).toBe('web_ui');
+  });
+});
+
+describe('E2E: brief-builder.yaml with mock answers', () => {
+  it('runs with iOS platform', () => {
+    const mock = JSON.stringify({
+      'platform': 'mobile-ios',
+      'product-name': 'MyiOSApp',
+      'product-description': 'A beautiful iOS application',
+      'targets-ios': ['iphone-6.7'],
+      'font-family': 'SF Pro, system-ui',
+      'color-primary': '#007AFF',
+      'color-secondary': '#5856D6',
+      'color-accent': '#FF9500',
+      'color-background': '#F2F2F7',
+      'color-surface': '#FFFFFF',
+      'color-text': '#000000',
+      'color-text-secondary': '#8E8E93',
+      'corner-radius': 'rounded',
+      'button-style': 'filled with label',
+      'card-style': 'elevated with shadow',
+      'spacing': 'comfortable',
+      'mood': 'clean-professional',
+      'references': '',
+      'screen-1-name': 'Home',
+      'screen-1-description': 'Main dashboard screen',
+      'screen-1-elements': 'nav-bar, cards, tabs',
+      'screen-2-name': 'Profile',
+      'screen-2-description': 'User profile screen',
+      'screen-2-elements': 'avatar, stats, settings',
+      'add-more-screens': false,
+      'brief-name': 'my-ios-app',
+      'confirm-brief': true,
+    });
+
+    const result = runJson(`run examples/yaml/brief-builder.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Concept Brief Builder');
+    expect(result.answers?.['platform']).toBe('mobile-ios');
+    expect(result.answers?.['product-name']).toBe('MyiOSApp');
+    // Game-specific steps should be skipped
+    expect(result.answers?.['character-1-archetype']).toBeUndefined();
+    expect(result.answers?.['game-stats']).toBeUndefined();
+    // Web-specific steps should be skipped
+    expect(result.answers?.['web-layout']).toBeUndefined();
+  });
+});
+
+describe('E2E: batch-generate.yaml with mock answers', () => {
+  it('configures batch with one app', () => {
+    const mock = JSON.stringify({
+      'shared-image-model': 'gemini-3.1-flash-image-preview',
+      'shared-text-model': 'gemini-2.5-flash',
+      'shared-count': 10,
+      'shared-providers': ['gemini'],
+      'shared-device-targets': ['iphone'],
+      'app-1-name': 'FirstApp',
+      'app-1-description': 'First app in the batch run',
+      'app-1-visual-style': 'auto',
+      'app-1-count': 10,
+      'add-app-2': false,
+      'confirm-batch': true,
+    });
+
+    const result = runJson(`run examples/yaml/batch-generate.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Batch Generation Setup');
+    expect(result.answers?.['app-1-name']).toBe('FirstApp');
+    // App 2 should be skipped
+    expect(result.answers?.['app-2-name']).toBeUndefined();
+  });
+});
+
+describe('E2E: cost-analyzer.yaml with mock answers', () => {
+  it('configures full cost report', () => {
+    const mock = JSON.stringify({
+      'report-type': 'full',
+      'output-format': 'summary',
+      'save-report': true,
+      'confirm-analyze': true,
+    });
+
+    const result = runJson(`run examples/yaml/cost-analyzer.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Cost Analysis Report');
+    expect(result.answers?.['report-type']).toBe('full');
+    // since-date and run-id should be skipped for full report
+    expect(result.answers?.['since-date']).toBeUndefined();
+    expect(result.answers?.['run-id']).toBeUndefined();
+  });
+});
+
+describe('E2E: appstore-upload.yaml with mock answers', () => {
+  it('collects upload credentials', () => {
+    const mock = JSON.stringify({
+      'run-id': '2024-01-15T10-30-00',
+      'issuer-id': 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      'key-id': 'ABC123DEF4',
+      'key-path': '/tmp/AuthKey.p8',
+      'app-id': '1234567890',
+      'localization-id': 'en-US',
+      'display-type': 'APP_IPHONE_67',
+      'confirm-upload': true,
+    });
+
+    const result = runJson(`run examples/yaml/appstore-upload.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('App Store Connect Upload');
+    expect(result.answers?.['issuer-id']).toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+    expect(result.answers?.['display-type']).toBe('APP_IPHONE_67');
+  });
+});
+
+describe('E2E: scraper-selector.yaml with mock answers', () => {
+  it('selects a scraper and output settings', () => {
+    const mock = JSON.stringify({
+      'scraper': 'reelshort',
+      'output-dir': './data/scraped',
+      'output-format': 'json',
+      'confirm-scrape': true,
+    });
+
+    const result = runJson(`run examples/yaml/scraper-selector.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Web Scraper CLI');
+    expect(result.answers?.['scraper']).toBe('reelshort');
+    expect(result.answers?.['output-format']).toBe('json');
   });
 });

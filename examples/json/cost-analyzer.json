@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "name": "Cost Analysis Report",
+    "description": "Configure and view AI generation cost analysis",
+    "version": "1.0.0"
+  },
+  "theme": {
+    "preset": "tokyonight"
+  },
+  "steps": [
+    {
+      "id": "report-type",
+      "type": "select",
+      "group": "Report Type",
+      "message": "What kind of cost report?",
+      "options": [
+        { "value": "full", "label": "Full Report", "hint": "Complete cost breakdown across all runs" },
+        { "value": "today", "label": "Today's Costs", "hint": "Filter to today's runs only" },
+        { "value": "since", "label": "Since Date", "hint": "Filter runs since a specific date" },
+        { "value": "single-run", "label": "Single Run", "hint": "Inspect a specific run by ID" }
+      ],
+      "default": "full"
+    },
+    {
+      "id": "since-date",
+      "type": "text",
+      "group": "Report Type",
+      "message": "Start date",
+      "placeholder": "YYYY-MM-DD",
+      "when": {
+        "field": "report-type",
+        "equals": "since"
+      },
+      "validate": [
+        { "rule": "required" },
+        { "rule": "pattern", "value": "^\\d{4}-\\d{2}-\\d{2}$", "message": "Must be in YYYY-MM-DD format" }
+      ]
+    },
+    {
+      "id": "run-id",
+      "type": "text",
+      "group": "Report Type",
+      "message": "Run ID to inspect",
+      "when": {
+        "field": "report-type",
+        "equals": "single-run"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "output-format",
+      "type": "select",
+      "group": "Output Options",
+      "message": "Output format",
+      "options": [
+        { "value": "interactive", "label": "Interactive", "hint": "Browse runs and inspect details" },
+        { "value": "summary", "label": "Summary", "hint": "Cost analytics overview only" },
+        { "value": "json", "label": "JSON", "hint": "Machine-readable JSON output" },
+        { "value": "markdown", "label": "Markdown Report", "hint": "Save as docs/costs-report.md" }
+      ],
+      "default": "interactive"
+    },
+    {
+      "id": "save-report",
+      "type": "confirm",
+      "group": "Output Options",
+      "message": "Save report to docs/costs-report.md?",
+      "default": true
+    },
+    {
+      "id": "confirm-analyze",
+      "type": "confirm",
+      "group": "Output Options",
+      "message": "Run cost analysis?",
+      "default": true
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

@@ -132,6 +132,10 @@ export interface MessageStepConfig extends BaseStepConfig {
   type: 'message';
 }
 
+export interface NoteStepConfig extends BaseStepConfig {
+  type: 'note';
+}
+
 export type StepConfig =
   | TextStepConfig
   | SelectStepConfig
@@ -143,11 +147,13 @@ export type StepConfig =
   | EditorStepConfig
   | PathStepConfig
   | ToggleStepConfig
-  | MessageStepConfig;
+  | MessageStepConfig
+  | NoteStepConfig;
 
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
 export interface ThemeConfig {
+  preset?: string;
   tokens?: {
     primary?: string;
     success?: string;
@@ -184,7 +190,7 @@ export interface ActionConfig {
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
-  meta: { name: string; version?: string; description?: string };
+  meta: { name: string; version?: string; description?: string; review?: boolean };
   theme?: ThemeConfig;
   steps: StepConfig[];
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };
@@ -210,6 +216,26 @@ export type WizardTransition =
   | { type: 'BACK' }
   | { type: 'JUMP'; stepId: string }
   | { type: 'CANCEL' };
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
+export type WizardEvent =
+  | { type: 'session:start'; wizard: string; description?: string; totalSteps: number }
+  | { type: 'session:end'; answers: Record<string, unknown>; cancelled: boolean }
+  | { type: 'group:start'; group: string }
+  | { type: 'step:start'; stepId: string; stepIndex: number; totalVisible: number; step: StepConfig }
+  | { type: 'step:complete'; stepId: string; value: unknown; step: StepConfig }
+  | { type: 'step:error'; stepId: string; error: string }
+  | { type: 'step:back'; stepId: string }
+  | { type: 'spinner:start'; message: string }
+  | { type: 'spinner:stop'; message?: string }
+  | { type: 'note'; title: string; body: string }
+  | { type: 'checks:start'; checks: PreFlightCheck[] }
+  | { type: 'check:pass'; name: string }
+  | { type: 'check:fail'; name: string; message: string }
+  | { type: 'actions:start' }
+  | { type: 'action:pass'; name: string }
+  | { type: 'action:fail'; name: string };
 
 // ─── Resolved Theme ──────────────────────────────────────────────────────────
 
@@ -243,4 +269,5 @@ export interface WizardRenderer {
   renderGroupHeader(group: string, theme: ResolvedTheme): void;
   renderSummary(answers: Record<string, unknown>, steps: StepConfig[], theme: ResolvedTheme): void;
   clear(): void;
+  onEvent?(event: WizardEvent, theme: ResolvedTheme): void;
 }

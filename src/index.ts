@@ -12,6 +12,8 @@ export type {
   PathStepConfig,
   ToggleStepConfig,
   MessageStepConfig,
+  NoteStepConfig,
+  WizardEvent,
   SelectOption,
   SeparatorOption,
   SelectChoice,
@@ -49,4 +51,9 @@ export { renderBanner } from './banner';
 export { loadCachedAnswers, saveCachedAnswers, clearCache, getCacheDir, slugify } from './cache';
 export { recordSelection, getOrderedOptions, clearMruData } from './mru';
 export { InkRenderer } from './renderers/ink';
+export { ClackRenderer } from './renderers/clack';
 export { saveTemplate, loadTemplate, listTemplates, deleteTemplate } from './templates';
+export { saveProgress, loadProgress, clearProgress } from './progress';
+export type { SavedProgress } from './progress';
+export { runPipeline } from './pipeline';
+export type { PipelineStep } from './pipeline';

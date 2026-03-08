@@ -84,7 +84,7 @@ jobs:
       - name: Validate example configs
         if: steps.version.outputs.changed == 'true'
         run: |
-          for f in examples/*.yaml; do
+          for f in examples/yaml/*.yaml examples/json/*.json; do
             node dist/cli.js validate "$f"
           done
 

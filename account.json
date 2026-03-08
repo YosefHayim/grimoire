@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "wizard": "Catppuccin Setup",
+  "answers": {
+    "username": "testuser",
+    "email": "test@example.com",
+    "role": "developer",
+    "experience": 5,
+    "interests": [
+      "frontend",
+      "backend"
+    ],
+    "newsletter": true,
+    "password": "securepass123",
+    "confirm": true
+  },
+  "stepsCompleted": 8,
+  "format": "json"
+}

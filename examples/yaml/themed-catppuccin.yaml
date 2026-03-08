@@ -1,0 +1,31 @@
+meta:
+  name: Catppuccin Themed Setup
+  description: A project setup wizard using the Catppuccin color preset
+
+theme:
+  preset: catppuccin
+
+steps:
+  - id: project-name
+    type: text
+    message: What is your project name?
+    validate:
+      - rule: required
+      - rule: minLength
+        value: 2
+
+  - id: framework
+    type: select
+    message: Choose a framework
+    options:
+      - { value: nextjs, label: "Next.js" }
+      - { value: remix, label: Remix }
+      - { value: astro, label: Astro }
+
+  - id: confirm
+    type: confirm
+    message: Create project?
+    default: true
+
+output:
+  format: json

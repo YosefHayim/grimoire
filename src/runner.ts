@@ -9,8 +9,15 @@ import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
 import { evaluateCondition } from './conditions';
 import { loadCachedAnswers, saveCachedAnswers } from './cache';
+import { saveProgress, loadProgress, clearProgress } from './progress';
 import { recordSelection, getOrderedOptions } from './mru';
-import type { ActionConfig, PreFlightCheck, SelectChoice, StepConfig, WizardConfig, WizardRenderer, WizardState, ResolvedTheme } from './types';
+import type { ActionConfig, PreFlightCheck, SelectChoice, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
+
+function emitEvent(renderer: WizardRenderer, event: WizardEvent, theme: ResolvedTheme): void {
+  if (renderer.onEvent) {
+    renderer.onEvent(event, theme);
+  }
+}
 
 export interface RunWizardOptions {
   renderer?: WizardRenderer;
@@ -26,18 +33,23 @@ export interface RunWizardOptions {
   asyncValidate?: (stepId: string, value: unknown, answers: Record<string, unknown>) => Promise<string | null>;
   cache?: boolean | { dir?: string };
   mru?: boolean;
+  resume?: boolean;
 }
 
 export function runPreFlightChecks(
   checks: PreFlightCheck[],
   theme: ResolvedTheme,
+  renderer?: WizardRenderer,
 ): void {
+  if (renderer) emitEvent(renderer, { type: 'checks:start', checks }, theme);
   for (const check of checks) {
     try {
       execSync(check.run, { stdio: 'pipe' });
       console.log(`  ${theme.success('✓')} ${check.name}`);
+      if (renderer) emitEvent(renderer, { type: 'check:pass', name: check.name }, theme);
     } catch {
       console.log(`  ${theme.error('✗')} ${check.name}: ${check.message}`);
+      if (renderer) emitEvent(renderer, { type: 'check:fail', name: check.name, message: check.message }, theme);
       throw new Error(`Pre-flight check failed: ${check.name} — ${check.message}`);
     }
   }
@@ -52,7 +64,7 @@ function getMockValue(
     return mockAnswers[step.id];
   }
 
-  if (step.type === 'message') {
+  if (step.type === 'message' || step.type === 'note') {
     return true;
   }
 
@@ -83,6 +95,7 @@ function getStepDefault(step: StepConfig): unknown {
       return step.default;
     case 'password':
     case 'message':
+    case 'note':
       return undefined;
   }
 }
@@ -101,6 +114,22 @@ export async function runWizard(
   const mruEnabled = !isMock && options?.mru !== false;
   let state = createWizardState(config);
 
+  const resumeEnabled = !isMock && options?.resume !== false;
+  if (resumeEnabled) {
+    const saved = loadProgress(config.meta.name);
+    if (saved) {
+      const stepExists = config.steps.some(s => s.id === saved.currentStepId);
+      if (stepExists) {
+        state = {
+          ...state,
+          currentStepId: saved.currentStepId,
+          answers: { ...state.answers, ...saved.answers },
+          history: saved.history,
+        };
+      }
+    }
+  }
+
   const cachedAnswers = cacheEnabled
     ? loadCachedAnswers(config.meta.name, cacheDir)
     : undefined;
@@ -114,112 +143,189 @@ export async function runWizard(
 
   try {
     if (!isMock && config.checks && config.checks.length > 0) {
-      runPreFlightChecks(config.checks, theme);
+      runPreFlightChecks(config.checks, theme, renderer);
     }
 
     if (!quiet) {
       printWizardHeader(config, theme, options?.plain);
     }
 
-    let previousGroup: string | undefined;
+    const visibleStepsForCount = getVisibleSteps(config, state.answers);
+    emitEvent(renderer, { type: 'session:start', wizard: config.meta.name, description: config.meta.description, totalSteps: visibleStepsForCount.length }, theme);
 
-    while (state.status === 'running') {
-      const visibleSteps = getVisibleSteps(config, state.answers);
-      const currentStep = config.steps.find((s) => s.id === state.currentStepId);
+    let needsReview = true;
 
-      if (!currentStep) {
-        throw new Error(`Current step not found: "${state.currentStepId}"`);
-      }
+    while (needsReview) {
+      let previousGroup: string | undefined;
 
-      if (!isMock) {
+      while (state.status === 'running') {
+        const visibleSteps = getVisibleSteps(config, state.answers);
+        const currentStep = config.steps.find((s) => s.id === state.currentStepId);
+
+        if (!currentStep) {
+          throw new Error(`Current step not found: "${state.currentStepId}"`);
+        }
+
         if (currentStep.group !== undefined && currentStep.group !== previousGroup) {
           const resolvedGroup = resolveTemplate(currentStep.group, state.answers);
-          renderer.renderGroupHeader(resolvedGroup, theme);
+          if (!isMock) {
+            renderer.renderGroupHeader(resolvedGroup, theme);
+          }
+          emitEvent(renderer, { type: 'group:start', group: resolvedGroup }, theme);
         }
         previousGroup = currentStep.group;
 
         const stepIndex = visibleSteps.findIndex((s) => s.id === state.currentStepId);
         const resolvedMessage = resolveTemplate(currentStep.message, state.answers);
         const resolvedDescription = currentStep.description ? resolveTemplate(currentStep.description, state.answers) : undefined;
-        renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme, resolvedDescription);
-      }
 
-      if (options?.onBeforeStep) {
-        await options.onBeforeStep(currentStep.id, currentStep, state);
-      }
+        if (!isMock) {
+          renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme, resolvedDescription);
+        }
 
-      const pluginStep = getPluginStep(currentStep.type);
-      const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep, cachedAnswers);
-      const withTemplate = options?.templateAnswers
-        ? applyTemplateDefaults(resolvedStep, options.templateAnswers)
-        : resolvedStep;
-      const templatedStep = resolveStepTemplates(withTemplate, state.answers);
-      const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
+        emitEvent(renderer, { type: 'step:start', stepId: currentStep.id, stepIndex, totalVisible: visibleSteps.length, step: currentStep }, theme);
 
-      try {
-        const value = isMock
-          ? getMockValue(mruStep, mockAnswers)
-          : pluginStep
-            ? await pluginStep.render(toStepRecord(mruStep), state, theme)
-            : await renderStep(renderer, mruStep, state, theme);
+        if (currentStep.type === 'note') {
+          emitEvent(renderer, { type: 'note', title: resolvedMessage, body: resolvedDescription ?? '' }, theme);
+        }
 
-        if (pluginStep?.validate) {
-          const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
-          if (pluginError) {
+        if (options?.onBeforeStep) {
+          await options.onBeforeStep(currentStep.id, currentStep, state);
+        }
+
+        const pluginStep = getPluginStep(currentStep.type);
+        const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep, cachedAnswers);
+        const withTemplate = options?.templateAnswers
+          ? applyTemplateDefaults(resolvedStep, options.templateAnswers)
+          : resolvedStep;
+        const templatedStep = resolveStepTemplates(withTemplate, state.answers);
+        const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
+
+        try {
+          const value = isMock
+            ? getMockValue(mruStep, mockAnswers)
+            : pluginStep
+              ? await pluginStep.render(toStepRecord(mruStep), state, theme)
+              : await renderStep(renderer, mruStep, state, theme);
+
+          if (pluginStep?.validate) {
+            const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
+            if (pluginError) {
+              if (isMock) {
+                throw new Error(
+                  `Mock mode: validation failed for step "${currentStep.id}": ${pluginError}`,
+                );
+              }
+              console.log(theme.error(`\n  ${pluginError}\n`));
+              continue;
+            }
+          }
+
+          const nextState = wizardReducer(state, { type: 'NEXT', value }, config);
+
+          if (nextState.errors[currentStep.id]) {
+            const errorMsg = resolveTemplate(nextState.errors[currentStep.id] ?? '', state.answers);
+            emitEvent(renderer, { type: 'step:error', stepId: currentStep.id, error: errorMsg }, theme);
             if (isMock) {
               throw new Error(
-                `Mock mode: validation failed for step "${currentStep.id}": ${pluginError}`,
+                `Mock mode: validation failed for step "${currentStep.id}": ${errorMsg}`,
               );
             }
-            console.log(theme.error(`\n  ${pluginError}\n`));
-            continue;
-          }
-        }
-
-        const nextState = wizardReducer(state, { type: 'NEXT', value }, config);
-
-        if (nextState.errors[currentStep.id]) {
-          const errorMsg = resolveTemplate(nextState.errors[currentStep.id] ?? '', state.answers);
-          if (isMock) {
-            throw new Error(
-              `Mock mode: validation failed for step "${currentStep.id}": ${errorMsg}`,
-            );
-          }
-          console.log(theme.error(`\n  ${errorMsg}\n`));
-          state = { ...nextState, errors: {} };
-          continue;
-        }
-
-        if (!isMock && options?.asyncValidate) {
-          const asyncError = await options.asyncValidate(currentStep.id, value, nextState.answers);
-          if (asyncError !== null) {
-            console.log(theme.error(`\n  ${asyncError}\n`));
+            console.log(theme.error(`\n  ${errorMsg}\n`));
             state = { ...nextState, errors: {} };
             continue;
           }
-        }
 
-        if (options?.onAfterStep) {
-          await options.onAfterStep(currentStep.id, value, nextState);
-        }
-
-        state = nextState;
-
-        if (mruEnabled && isSelectLikeStep(currentStep.type)) {
-          recordSelection(config.meta.name, currentStep.id, value as string | string[]);
-        }
-
-        options?.onStepComplete?.(currentStep.id, value, state);
-      } catch (error: unknown) {
-        if (!isMock && isUserCancel(error)) {
-          state = wizardReducer(state, { type: 'CANCEL' }, config);
-          options?.onCancel?.(state);
-          if (!quiet) {
-            console.log(theme.warning('\n  Wizard cancelled.\n'));
+          if (!isMock && options?.asyncValidate) {
+            const asyncError = await options.asyncValidate(currentStep.id, value, nextState.answers);
+            if (asyncError !== null) {
+              console.log(theme.error(`\n  ${asyncError}\n`));
+              state = { ...nextState, errors: {} };
+              continue;
+            }
           }
-          return state.answers;
+
+          if (options?.onAfterStep) {
+            await options.onAfterStep(currentStep.id, value, nextState);
+          }
+
+          state = nextState;
+          emitEvent(renderer, { type: 'step:complete', stepId: currentStep.id, value, step: currentStep }, theme);
+
+          if (mruEnabled && isSelectLikeStep(currentStep.type)) {
+            recordSelection(config.meta.name, currentStep.id, value as string | string[]);
+          }
+
+          options?.onStepComplete?.(currentStep.id, value, state);
+        } catch (error: unknown) {
+          if (!isMock && isUserCancel(error)) {
+            state = wizardReducer(state, { type: 'CANCEL' }, config);
+            options?.onCancel?.(state);
+            const passwordStepIds = config.steps.filter(s => s.type === 'password').map(s => s.id);
+            saveProgress(config.meta.name, {
+              currentStepId: state.currentStepId,
+              answers: state.answers,
+              history: state.history,
+            }, undefined, passwordStepIds);
+            emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: true }, theme);
+            if (!quiet) {
+              console.log(theme.warning('\n  Wizard cancelled.\n'));
+            }
+            return state.answers;
+          }
+          throw error;
         }
-        throw error;
+      }
+
+      // Review screen: after wizard loop completes, before summary
+      if (config.meta.review && !isMock && state.status === 'done') {
+        const reviewLines: string[] = [];
+        for (const step of config.steps) {
+          const answer = state.answers[step.id];
+          if (answer === undefined) continue;
+          const display = step.type === 'password' ? '****' :
+            Array.isArray(answer) ? answer.map(String).join(', ') : String(answer);
+          reviewLines.push(`${step.id}: ${display}`);
+        }
+
+        emitEvent(renderer, { type: 'note', title: 'Review your answers', body: reviewLines.join('\n') }, theme);
+
+        console.log(`\n  ${theme.bold('Review your answers:')}\n`);
+        for (const line of reviewLines) {
+          console.log(`  ${line}`);
+        }
+        console.log();
+
+        const { confirm: confirmPrompt } = await import('@inquirer/prompts');
+        const ok = await confirmPrompt({
+          message: 'Everything look right?',
+          default: true,
+        });
+
+        if (ok) {
+          needsReview = false;
+        } else {
+          const { select: selectPrompt } = await import('@inquirer/prompts');
+          const stepsWithAnswers = config.steps.filter(
+            s => state.answers[s.id] !== undefined && s.type !== 'note' && s.type !== 'message',
+          );
+
+          const stepToRevisit = await selectPrompt({
+            message: 'Which step would you like to change?',
+            choices: stepsWithAnswers.map(s => ({
+              name: `${s.id}: ${s.type === 'password' ? '****' : String(state.answers[s.id] ?? '')}`,
+              value: s.id,
+            })),
+          });
+
+          state = {
+            ...state,
+            currentStepId: stepToRevisit,
+            status: 'running',
+          };
+        }
+      } else {
+        needsReview = false;
       }
     }
 
@@ -228,8 +334,10 @@ export async function runWizard(
     }
 
     if (state.status === 'done' && config.actions && config.actions.length > 0 && !isMock) {
-      await executeActions(config.actions, state.answers, theme);
+      await executeActions(config.actions, state.answers, theme, renderer);
     }
+
+    emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: state.status === 'cancelled' }, theme);
 
     if (state.status === 'done' && cacheEnabled) {
       const passwordStepIds = new Set(
@@ -242,6 +350,10 @@ export async function runWizard(
         }
       }
       saveCachedAnswers(config.meta.name, answersToCache, cacheDir);
+    }
+
+    if (state.status === 'done') {
+      clearProgress(config.meta.name);
     }
 
     return state.answers;
@@ -289,6 +401,8 @@ function renderStep(
       return renderer.renderToggle(step, state, theme);
     case 'message':
       renderer.renderMessage(step, state, theme);
+      return Promise.resolve(true);
+    case 'note':
       return Promise.resolve(true);
   }
 }
@@ -344,6 +458,7 @@ function resolveStepDefaults(
     }
     case 'password':
     case 'message':
+    case 'note':
       return step;
   }
 }
@@ -358,7 +473,7 @@ function getCachedDefault<T>(
 
 function applyTemplateDefaults(step: StepConfig, templateAnswers: Record<string, unknown>): StepConfig {
   if (!(step.id in templateAnswers)) return step;
-  if (step.type === 'password' || step.type === 'message') return step;
+  if (step.type === 'password' || step.type === 'message' || step.type === 'note') return step;
 
   const value = templateAnswers[step.id];
 
@@ -456,6 +571,7 @@ function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>
     case 'confirm':
     case 'toggle':
     case 'message':
+    case 'note':
       return {
         ...step,
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
@@ -467,7 +583,9 @@ async function executeActions(
   actions: ActionConfig[],
   answers: Record<string, unknown>,
   theme: ResolvedTheme,
+  renderer?: WizardRenderer,
 ): Promise<void> {
+  if (renderer) emitEvent(renderer, { type: 'actions:start' }, theme);
   console.log(`\n  ${theme.bold('Running actions...')}\n`);
 
   for (const action of actions) {
@@ -482,8 +600,10 @@ async function executeActions(
     try {
       execSync(resolvedCommand, { stdio: 'pipe' });
       console.log(`  ${theme.success('✓')} ${label}`);
+      if (renderer) emitEvent(renderer, { type: 'action:pass', name: label }, theme);
     } catch {
       console.log(`  ${theme.error('✗')} ${label}`);
+      if (renderer) emitEvent(renderer, { type: 'action:fail', name: label }, theme);
       throw new Error(`Action failed: ${label}`);
     }
   }

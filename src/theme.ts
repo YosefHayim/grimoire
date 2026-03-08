@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { ThemeConfig, ResolvedTheme } from './types';
+import { THEME_PRESETS } from './themes/presets';
 
 const DEFAULT_TOKENS = {
   primary: '#5B9BD5',
@@ -19,7 +20,8 @@ const DEFAULT_ICONS = {
 } as const;
 
 export function resolveTheme(themeConfig?: ThemeConfig): ResolvedTheme {
-  const tokens = { ...DEFAULT_TOKENS, ...themeConfig?.tokens };
+  const presetTokens = themeConfig?.preset ? THEME_PRESETS[themeConfig.preset] : undefined;
+  const tokens = { ...DEFAULT_TOKENS, ...presetTokens, ...themeConfig?.tokens };
   const icons = { ...DEFAULT_ICONS, ...themeConfig?.icons };
 
   return {

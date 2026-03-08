@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "name": "All Features Showcase",
+    "description": "Demonstrates search, editor, path, toggle, and step groups"
+  },
+  "steps": [
+    {
+      "id": "search-framework",
+      "type": "search",
+      "group": "Project Setup",
+      "message": "Search for a framework",
+      "options": [
+        { "value": "nextjs", "label": "Next.js" },
+        { "value": "remix", "label": "Remix" },
+        { "value": "astro", "label": "Astro" },
+        { "value": "sveltekit", "label": "SvelteKit" },
+        { "value": "nuxt", "label": "Nuxt" },
+        { "value": "gatsby", "label": "Gatsby" }
+      ]
+    },
+    {
+      "id": "project-path",
+      "type": "path",
+      "group": "Project Setup",
+      "message": "Where should we create the project?",
+      "placeholder": "./my-project",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "use-typescript",
+      "type": "toggle",
+      "group": "Configuration",
+      "message": "TypeScript?",
+      "active": "Yes, TypeScript",
+      "inactive": "No, JavaScript",
+      "default": true
+    },
+    {
+      "id": "readme-content",
+      "type": "editor",
+      "group": "Configuration",
+      "message": "Write your README content",
+      "required": false
+    },
+    {
+      "id": "port",
+      "type": "number",
+      "group": "Configuration",
+      "message": "Dev server port",
+      "default": 3000,
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "id": "confirm",
+      "type": "confirm",
+      "message": "Create project?",
+      "next": "__done__"
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

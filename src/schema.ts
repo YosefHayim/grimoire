@@ -159,6 +159,11 @@ const messageStepSchema = z.object({
   type: z.literal('message'),
 });
 
+const noteStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('note'),
+});
+
 const stepConfigSchema = z.discriminatedUnion('type', [
   textStepSchema,
   selectStepSchema,
@@ -171,6 +176,7 @@ const stepConfigSchema = z.discriminatedUnion('type', [
   pathStepSchema,
   toggleStepSchema,
   messageStepSchema,
+  noteStepSchema,
 ]);
 
 const hexColorSchema = z.string().regex(
@@ -179,6 +185,7 @@ const hexColorSchema = z.string().regex(
 );
 
 const themeConfigSchema = z.object({
+  preset: z.enum(['default', 'catppuccin', 'dracula', 'nord', 'tokyonight', 'monokai']).optional(),
   tokens: z.object({
     primary: hexColorSchema.optional(),
     success: hexColorSchema.optional(),
@@ -213,6 +220,7 @@ const wizardConfigSchema = z.object({
     name: z.string(),
     version: z.string().optional(),
     description: z.string().optional(),
+    review: z.boolean().optional(),
   }),
   theme: themeConfigSchema.optional(),
   steps: z.array(stepConfigSchema).min(1),
@@ -360,6 +368,7 @@ export {
   separatorOptionSchema,
   selectChoiceSchema,
   messageStepSchema,
+  noteStepSchema,
   stepConfigSchema,
   themeConfigSchema,
   preFlightCheckSchema,

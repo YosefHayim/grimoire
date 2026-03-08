@@ -1,0 +1,35 @@
+meta:
+  name: Pipeline Demo
+  description: A multi-stage wizard demonstrating the pipeline concept
+
+steps:
+  - id: stage
+    type: note
+    message: Stage 1 - Project Setup
+    description: First we'll set up your project basics
+
+  - id: project-name
+    type: text
+    message: What is your project name?
+    validate:
+      - rule: required
+
+  - id: stage2
+    type: note
+    message: Stage 2 - Configuration
+    description: Now let's configure your project
+
+  - id: language
+    type: select
+    message: Programming language?
+    options:
+      - { value: typescript, label: TypeScript }
+      - { value: javascript, label: JavaScript }
+
+  - id: confirm
+    type: confirm
+    message: Looks good?
+    default: true
+
+output:
+  format: json

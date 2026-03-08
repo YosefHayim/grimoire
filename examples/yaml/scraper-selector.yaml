@@ -1,0 +1,52 @@
+meta:
+  name: "Web Scraper CLI"
+  description: "Choose and run a web scraper for app store data collection"
+  version: "1.0.0"
+
+theme:
+  preset: catppuccin
+
+steps:
+  - id: scraper-info
+    type: note
+    group: "Scraper Selection"
+    message: "Available Scrapers"
+    description: "Select a scraper to run. Each scraper collects app metadata from its respective platform."
+
+  - id: scraper
+    type: select
+    group: "Scraper Selection"
+    message: "Pick a scraper"
+    options:
+      - { value: reelshort, label: "ReelShort", hint: "Scrape all shows from reelshort.com" }
+      - { value: dramabox, label: "DramaBox", hint: "Scrape all shows from dramaboxdb.com" }
+      - { value: goodshort, label: "GoodShort", hint: "Scrape dramas from goodshort.com" }
+      - { value: netshort, label: "NetShort", hint: "Scrape dramas from netshort.com" }
+      - { value: shorttv, label: "ShortTV", hint: "Scrape dramas from shorttv.live/ShortMax" }
+      - { value: mydrama, label: "MyDrama", hint: "Scrape dramas from my-drama.com" }
+      - { value: dribbble, label: "Dribbble Inspirations", hint: "Scrape App Store preview shots from Dribbble" }
+
+  - id: output-dir
+    type: path
+    group: "Output Settings"
+    message: "Output directory for scraped data"
+    default: "./data/scraped"
+    placeholder: "./data/scraped"
+
+  - id: output-format
+    type: select
+    group: "Output Settings"
+    message: "Output format for scraped data"
+    options:
+      - { value: json, label: "JSON" }
+      - { value: csv, label: "CSV" }
+    default: json
+
+  - id: confirm-scrape
+    type: confirm
+    group: "Confirmation"
+    message: "Start scraping?"
+    default: true
+
+output:
+  format: json

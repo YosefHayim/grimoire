@@ -12,6 +12,7 @@ import { bashCompletion, zshCompletion, fishCompletion } from './completions';
 import { clearCache } from './cache';
 import { listTemplates, deleteTemplate, loadTemplate } from './templates';
 import { InkRenderer } from './renderers/ink';
+import { ClackRenderer } from './renderers/clack';
 import type { WizardRenderer } from './types';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -36,6 +37,7 @@ interface RunCommandOpts {
   mock?: string;
   json?: boolean;
   cache?: boolean;
+  resume?: boolean;
   renderer?: string;
   template?: string;
 }
@@ -43,7 +45,7 @@ interface RunCommandOpts {
 program
   .name('grimoire')
   .description('Config-driven CLI wizard framework')
-  .version('0.3.1')
+  .version('0.4.0')
   .option('--no-color', 'Disable colored output')
   .option('--plain', 'Plain output mode (no colors, no banner)')
   .hook('preAction', () => {
@@ -62,7 +64,8 @@ program
   .option('--mock <json>', 'Run wizard with preset answers (JSON string)')
   .option('--json', 'Output structured JSON result to stdout')
   .option('--no-cache', 'Disable answer caching for this run')
-  .option('--renderer <type>', 'Renderer to use: inquirer (default) or ink', 'inquirer')
+  .option('--no-resume', 'Disable progress resume for this run')
+  .option('--renderer <type>', 'Renderer to use: inquirer (default), ink, or clack', 'inquirer')
   .option('--template <name>', 'Load a saved template as defaults')
   .action(async (configPath: string, opts: RunCommandOpts) => {
     try {
@@ -94,6 +97,7 @@ program
         mockAnswers,
         templateAnswers,
         cache: opts.cache,
+        resume: opts.resume,
       });
 
       const rawOutputPath = opts.output ?? config.output?.path;
@@ -184,6 +188,7 @@ program
         '..',
         '..',
         'examples',
+        'yaml',
         'demo.yaml',
       );
       const config = await loadWizardConfig(demoPath);
@@ -411,7 +416,10 @@ function resolveRenderer(rendererName?: string): WizardRenderer | undefined {
   if (rendererName === 'ink') {
     return new InkRenderer();
   }
-  throw new Error(`Unknown renderer: "${rendererName}". Supported: inquirer, ink`);
+  if (rendererName === 'clack') {
+    return new ClackRenderer();
+  }
+  throw new Error(`Unknown renderer: "${rendererName}". Supported: inquirer, ink, clack`);
 }
 
 function toEnvKey(key: string): string {

@@ -1,0 +1,155 @@
+{
+  "meta": {
+    "name": "Full-Stack Project Wizard",
+    "description": "Set up a full-stack project with conditional framework selection"
+  },
+  "steps": [
+    {
+      "id": "project-name",
+      "type": "text",
+      "message": "Project name?",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "project-type",
+      "type": "select",
+      "message": "What type of project?",
+      "options": [
+        { "value": "web", "label": "Web Application" },
+        { "value": "api", "label": "REST API" },
+        { "value": "cli", "label": "CLI Tool" },
+        { "value": "lib", "label": "Library" }
+      ],
+      "routes": {
+        "web": "web-framework",
+        "api": "api-framework",
+        "cli": "cli-features",
+        "lib": "lib-target"
+      }
+    },
+    {
+      "id": "web-framework",
+      "type": "select",
+      "message": "Choose a web framework",
+      "options": [
+        { "value": "nextjs", "label": "Next.js", "hint": "React SSR/SSG" },
+        { "value": "astro", "label": "Astro", "hint": "Content-focused, multi-framework" },
+        { "value": "sveltekit", "label": "SvelteKit", "hint": "Svelte with SSR" },
+        { "value": "nuxt", "label": "Nuxt", "hint": "Vue SSR/SSG" }
+      ],
+      "next": "styling"
+    },
+    {
+      "id": "styling",
+      "type": "select",
+      "message": "CSS approach?",
+      "when": {
+        "any": [
+          { "field": "web-framework", "equals": "nextjs" },
+          { "field": "web-framework", "equals": "sveltekit" },
+          { "field": "web-framework", "equals": "nuxt" },
+          { "field": "web-framework", "equals": "astro" }
+        ]
+      },
+      "options": [
+        { "value": "tailwind", "label": "Tailwind CSS" },
+        { "value": "css-modules", "label": "CSS Modules" },
+        { "value": "styled", "label": "Styled Components" },
+        { "value": "vanilla", "label": "Vanilla CSS" }
+      ],
+      "next": "database"
+    },
+    {
+      "id": "api-framework",
+      "type": "select",
+      "message": "Choose an API framework",
+      "options": [
+        { "value": "express", "label": "Express.js" },
+        { "value": "fastify", "label": "Fastify" },
+        { "value": "hono", "label": "Hono" },
+        { "value": "elysia", "label": "Elysia (Bun)" }
+      ],
+      "next": "database"
+    },
+    {
+      "id": "database",
+      "type": "select",
+      "message": "Database?",
+      "options": [
+        { "value": "postgres", "label": "PostgreSQL" },
+        { "value": "mysql", "label": "MySQL" },
+        { "value": "sqlite", "label": "SQLite" },
+        { "value": "mongodb", "label": "MongoDB" },
+        { "value": "none", "label": "No database" }
+      ],
+      "next": "auth"
+    },
+    {
+      "id": "auth",
+      "type": "select",
+      "message": "Authentication?",
+      "when": {
+        "field": "database",
+        "notEquals": "none"
+      },
+      "options": [
+        { "value": "jwt", "label": "JWT tokens" },
+        { "value": "session", "label": "Session-based" },
+        { "value": "oauth", "label": "OAuth 2.0" },
+        { "value": "none", "label": "No auth" }
+      ],
+      "next": "deploy"
+    },
+    {
+      "id": "cli-features",
+      "type": "multiselect",
+      "message": "CLI features to include",
+      "options": [
+        { "value": "args", "label": "Argument parsing (Commander)" },
+        { "value": "prompts", "label": "Interactive prompts" },
+        { "value": "colors", "label": "Colored output (Chalk)" },
+        { "value": "spinner", "label": "Spinners & progress bars" },
+        { "value": "config", "label": "Config file support" }
+      ],
+      "min": 1,
+      "next": "deploy"
+    },
+    {
+      "id": "lib-target",
+      "type": "multiselect",
+      "message": "Build targets",
+      "options": [
+        { "value": "esm", "label": "ESM" },
+        { "value": "cjs", "label": "CommonJS" },
+        { "value": "types", "label": "TypeScript declarations" },
+        { "value": "umd", "label": "UMD (browser)" }
+      ],
+      "default": ["esm", "types"],
+      "min": 1,
+      "next": "deploy"
+    },
+    {
+      "id": "deploy",
+      "type": "select",
+      "message": "Deployment target?",
+      "options": [
+        { "value": "vercel", "label": "Vercel" },
+        { "value": "aws", "label": "AWS" },
+        { "value": "docker", "label": "Docker" },
+        { "value": "npm", "label": "npm (publish)" },
+        { "value": "none", "label": "None" }
+      ]
+    },
+    {
+      "id": "confirm",
+      "type": "confirm",
+      "message": "Generate project?",
+      "next": "__done__"
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

@@ -47,6 +47,10 @@
     "inquirer",
     "clack"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YosefHayim/grimoire.git"
+  },
   "author": "Yosef Hayim (https://github.com/YosefHayim)",
   "license": "MIT",
   "engines": {

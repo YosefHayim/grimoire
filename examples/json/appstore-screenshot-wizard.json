@@ -1,0 +1,362 @@
+{
+  "meta": {
+    "name": "App Store Screenshot Wizard",
+    "description": "Generate beautiful AI-powered app store screenshots",
+    "version": "1.0.0",
+    "review": true
+  },
+  "theme": {
+    "preset": "catppuccin"
+  },
+  "steps": [
+    {
+      "id": "generation-mode",
+      "type": "select",
+      "group": "Generation Setup",
+      "message": "What would you like to generate?",
+      "default": "app_store_screenshots",
+      "options": [
+        { "value": "app_store_screenshots", "label": "App Store Screenshots", "hint": "Device-framed marketing screenshots with store-specific dimensions" },
+        { "value": "app_ui", "label": "App UI Screens", "hint": "Consistent app UI screens driven by a concept brief design system" },
+        { "value": "web_ui", "label": "Web UI Screens", "hint": "SaaS dashboards, landing pages, and web application screens" },
+        { "value": "design_system", "label": "Design System Preview", "hint": "Component and token showcase for visual consistency review" }
+      ]
+    },
+    {
+      "id": "platform-preset",
+      "type": "select",
+      "group": "Generation Setup",
+      "message": "Target platform",
+      "when": {
+        "field": "generation-mode",
+        "equals": "app_store_screenshots"
+      },
+      "default": "custom",
+      "options": [
+        { "value": "app_store", "label": "Apple App Store", "hint": "iPhone + iPad" },
+        { "value": "google_play", "label": "Google Play Store", "hint": "Phone + Tablet" },
+        { "value": "both", "label": "Both Platforms", "hint": "App Store + Google Play" },
+        { "value": "custom", "label": "Custom Selection", "hint": "Choose devices manually" }
+      ]
+    },
+    {
+      "id": "providers",
+      "type": "multiselect",
+      "group": "Generation Setup",
+      "message": "Select AI providers",
+      "min": 1,
+      "default": ["gemini"],
+      "options": [
+        { "value": "gemini", "label": "Gemini" },
+        { "value": "openai", "label": "OpenAI" }
+      ]
+    },
+    {
+      "id": "app-name",
+      "type": "text",
+      "group": "App Details",
+      "message": "App name",
+      "validate": [
+        { "rule": "required" },
+        { "rule": "minLength", "value": 1 }
+      ]
+    },
+    {
+      "id": "app-description",
+      "type": "text",
+      "group": "App Details",
+      "message": "Describe your app",
+      "validate": [
+        { "rule": "required" },
+        { "rule": "minLength", "value": 10 }
+      ]
+    },
+    {
+      "id": "visual-style",
+      "type": "select",
+      "group": "Visual Style",
+      "message": "Visual style",
+      "default": "auto",
+      "options": [
+        { "value": "auto", "label": "Auto (AI picks best style)", "hint": "Let the Creative Director choose" },
+        { "value": "photorealistic", "label": "Photorealistic" },
+        { "value": "3d-cartoon", "label": "3D Cartoon" },
+        { "value": "isometric", "label": "Isometric" },
+        { "value": "claymorphism", "label": "Claymorphism" },
+        { "value": "flat-2d", "label": "Flat 2D" },
+        { "value": "illustration", "label": "Illustration" },
+        { "value": "freestyle", "label": "Freestyle (AI-selected)", "hint": "AI picks the most distinctive style" }
+      ]
+    },
+    {
+      "id": "screenshot-count",
+      "type": "number",
+      "group": "Content Settings",
+      "message": "How many screenshots?",
+      "default": 10,
+      "min": 1,
+      "max": 20
+    },
+    {
+      "id": "reference-images",
+      "type": "select",
+      "group": "Content Settings",
+      "message": "Reference images for UI matching",
+      "default": "none",
+      "options": [
+        { "value": "none", "label": "None", "hint": "Generate UI from description only" },
+        { "value": "single", "label": "Single screenshot", "hint": "Provide one reference image" },
+        { "value": "folder", "label": "Folder of screenshots", "hint": "Multiple UI screenshots for 1:1 matching" }
+      ]
+    },
+    {
+      "id": "reference-image-path",
+      "type": "text",
+      "group": "Content Settings",
+      "message": "Path to screenshot image",
+      "when": {
+        "field": "reference-images",
+        "equals": "single"
+      },
+      "placeholder": "/path/to/screenshot.png",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "reference-folder-path",
+      "type": "text",
+      "group": "Content Settings",
+      "message": "Path to folder with UI screenshots",
+      "when": {
+        "field": "reference-images",
+        "equals": "folder"
+      },
+      "placeholder": "/path/to/screenshots/",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "design-reference",
+      "type": "select",
+      "group": "Content Settings",
+      "message": "Design reference",
+      "default": "none",
+      "options": [
+        { "value": "none", "label": "None", "hint": "AI picks its own creative direction" },
+        { "value": "dribbble", "label": "From dribbble-inspirations", "hint": "Pick a professional design to match" },
+        { "value": "custom", "label": "Custom image path", "hint": "Provide any image file as reference" }
+      ]
+    },
+    {
+      "id": "design-reference-path",
+      "type": "text",
+      "group": "Content Settings",
+      "message": "Path to design reference image",
+      "when": {
+        "field": "design-reference",
+        "equals": "custom"
+      },
+      "placeholder": "/path/to/design-reference.png",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "device-targets",
+      "type": "multiselect",
+      "group": "Device Targets",
+      "message": "Target devices",
+      "when": {
+        "any": [
+          { "field": "platform-preset", "equals": "custom" },
+          { "field": "generation-mode", "notEquals": "app_store_screenshots" }
+        ]
+      },
+      "min": 1,
+      "default": ["iphone"],
+      "options": [
+        { "value": "iphone", "label": "iPhone" },
+        { "value": "ipad", "label": "iPad" },
+        { "value": "watch", "label": "Apple Watch" },
+        { "value": "android-phone", "label": "Android Phone" },
+        { "value": "android-tablet", "label": "Android Tablet" }
+      ]
+    },
+    {
+      "id": "gemini-image-model",
+      "type": "select",
+      "group": "AI Models",
+      "message": "Gemini image generation model",
+      "when": {
+        "field": "providers",
+        "includes": "gemini"
+      },
+      "default": "gemini-3.1-flash-image-preview",
+      "options": [
+        { "value": "gemini-3.1-flash-image-preview", "label": "Flash (Fast & Cheap)", "hint": "Near-Pro quality at ~$0.067/img" },
+        { "value": "gemini-3-pro-image-preview", "label": "Pro (Best Quality)", "hint": "Top quality, 94% text accuracy — $0.134/img" }
+      ]
+    },
+    {
+      "id": "gemini-text-model",
+      "type": "select",
+      "group": "AI Models",
+      "message": "Gemini pipeline text model",
+      "when": {
+        "field": "providers",
+        "includes": "gemini"
+      },
+      "default": "gemini-2.5-flash",
+      "options": [
+        { "value": "gemini-2.5-flash", "label": "Gemini Flash (Fast)", "hint": "Fast pipeline stages, good quality" },
+        { "value": "gemini-2.5-pro", "label": "Gemini Pro (Best Prompts)", "hint": "Higher quality prompt refinement" },
+        { "value": "claude-sonnet-4-20250514", "label": "Claude Sonnet 4 (Scoring)", "hint": "Excellent visual judgment" },
+        { "value": "claude-haiku-4-20250414", "label": "Claude Haiku 4 (Fast Scoring)", "hint": "Fast and cheap visual scoring" }
+      ]
+    },
+    {
+      "id": "openai-image-model",
+      "type": "select",
+      "group": "AI Models",
+      "message": "OpenAI image generation model",
+      "when": {
+        "field": "providers",
+        "includes": "openai"
+      },
+      "default": "gpt-image-1",
+      "options": [
+        { "value": "gpt-image-1", "label": "GPT Image 1", "hint": "OpenAI image generation model" }
+      ]
+    },
+    {
+      "id": "openai-text-model",
+      "type": "select",
+      "group": "AI Models",
+      "message": "OpenAI pipeline text model",
+      "when": {
+        "field": "providers",
+        "includes": "openai"
+      },
+      "default": "gpt-4o-mini",
+      "options": [
+        { "value": "gpt-4o", "label": "GPT-4o", "hint": "Advanced reasoning and generation" },
+        { "value": "gpt-4o-mini", "label": "GPT-4o Mini", "hint": "Fast and efficient generation" }
+      ]
+    },
+    {
+      "id": "headline-prefix",
+      "type": "text",
+      "group": "Marketing Copy",
+      "message": "Headline prefix above device",
+      "placeholder": "Leave empty to omit",
+      "default": "",
+      "required": false
+    },
+    {
+      "id": "cta-badge",
+      "type": "text",
+      "group": "Marketing Copy",
+      "message": "CTA badge text",
+      "placeholder": "Leave empty for no badge",
+      "default": "",
+      "required": false
+    },
+    {
+      "id": "badge-position",
+      "type": "select",
+      "group": "Marketing Copy",
+      "message": "Badge position",
+      "when": {
+        "field": "cta-badge",
+        "isNotEmpty": true
+      },
+      "default": "bottom-right",
+      "options": [
+        { "value": "bottom-right", "label": "Bottom-right" },
+        { "value": "bottom-left", "label": "Bottom-left" },
+        { "value": "top-right", "label": "Top-right" }
+      ]
+    },
+    {
+      "id": "want-locales",
+      "type": "confirm",
+      "group": "Localization",
+      "message": "Generate for multiple languages?",
+      "default": false
+    },
+    {
+      "id": "locales",
+      "type": "multiselect",
+      "group": "Localization",
+      "message": "Select target locales",
+      "when": {
+        "field": "want-locales",
+        "equals": true
+      },
+      "min": 1,
+      "options": [
+        { "value": "en", "label": "English" },
+        { "value": "ja", "label": "Japanese" },
+        { "value": "de", "label": "German" },
+        { "value": "es", "label": "Spanish" },
+        { "value": "fr", "label": "French" },
+        { "value": "pt-BR", "label": "Portuguese (Brazil)" },
+        { "value": "ko", "label": "Korean" },
+        { "value": "zh-CN", "label": "Chinese (Simplified)" },
+        { "value": "it", "label": "Italian" },
+        { "value": "ar", "label": "Arabic" }
+      ]
+    },
+    {
+      "id": "advanced-options",
+      "type": "multiselect",
+      "group": "Advanced Options",
+      "message": "Advanced options",
+      "required": false,
+      "options": [
+        { "value": "variations", "label": "Style variations", "hint": "Generate multiple style sets" },
+        { "value": "mixed", "label": "Mixed prompts", "hint": "Different style per image" },
+        { "value": "landscape", "label": "Landscape orientation", "hint": "2778x1284 instead of portrait" }
+      ]
+    },
+    {
+      "id": "variation-styles",
+      "type": "multiselect",
+      "group": "Advanced Options",
+      "message": "Select styles for variations",
+      "when": {
+        "field": "advanced-options",
+        "includes": "variations"
+      },
+      "min": 1,
+      "options": [
+        { "value": "photorealistic", "label": "Photorealistic" },
+        { "value": "3d-cartoon", "label": "3D Cartoon" },
+        { "value": "isometric", "label": "Isometric" },
+        { "value": "claymorphism", "label": "Claymorphism" },
+        { "value": "flat-2d", "label": "Flat 2D" },
+        { "value": "illustration", "label": "Illustration" }
+      ]
+    },
+    {
+      "id": "confirm-generate",
+      "type": "confirm",
+      "group": "Confirmation",
+      "message": "Start generation?",
+      "default": true
+    },
+    {
+      "id": "save-template-name",
+      "type": "text",
+      "group": "Confirmation",
+      "message": "Save as template? (enter name or leave empty to skip)",
+      "default": "",
+      "required": false
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

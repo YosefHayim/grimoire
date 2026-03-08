@@ -1,0 +1,519 @@
+{
+  "meta": {
+    "name": "Concept Brief Builder",
+    "description": "Create a design concept brief for AI-powered screenshot generation",
+    "version": "1.0.0",
+    "review": true
+  },
+  "theme": {
+    "preset": "dracula"
+  },
+  "steps": [
+    {
+      "id": "platform",
+      "type": "select",
+      "group": "Platform",
+      "message": "Platform type",
+      "options": [
+        { "value": "mobile-ios", "label": "iOS App", "hint": "iPhone and iPad" },
+        { "value": "mobile-android", "label": "Android App", "hint": "Android phone and tablet" },
+        { "value": "mobile-game", "label": "Mobile Game", "hint": "iOS or Android game" },
+        { "value": "web-saas", "label": "Web SaaS", "hint": "Web application / SaaS" },
+        { "value": "landing-page", "label": "Landing Page", "hint": "Marketing landing page" },
+        { "value": "desktop-app", "label": "Desktop App", "hint": "macOS or Windows app" }
+      ]
+    },
+    {
+      "id": "product-name",
+      "type": "text",
+      "group": "Product Info",
+      "message": "Product name",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "product-description",
+      "type": "text",
+      "group": "Product Info",
+      "message": "Product description",
+      "validate": [
+        { "rule": "required" },
+        { "rule": "minLength", "value": 10 }
+      ]
+    },
+    {
+      "id": "targets-ios",
+      "type": "multiselect",
+      "group": "Target Dimensions",
+      "message": "Target dimensions",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-ios"
+      },
+      "options": [
+        { "value": "iphone-6.7", "label": "iPhone 6.7\"" },
+        { "value": "ipad-pro", "label": "iPad Pro" }
+      ],
+      "min": 1
+    },
+    {
+      "id": "targets-android",
+      "type": "multiselect",
+      "group": "Target Dimensions",
+      "message": "Target dimensions",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-android"
+      },
+      "options": [
+        { "value": "android-phone", "label": "Android Phone" },
+        { "value": "android-7-tablet", "label": "Android 7\" Tablet" },
+        { "value": "android-10-tablet", "label": "Android 10\" Tablet" }
+      ],
+      "min": 1
+    },
+    {
+      "id": "targets-game",
+      "type": "multiselect",
+      "group": "Target Dimensions",
+      "message": "Target dimensions",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "options": [
+        { "value": "iphone-6.7", "label": "iPhone 6.7\"" },
+        { "value": "ipad-pro", "label": "iPad Pro" },
+        { "value": "android-phone", "label": "Android Phone" },
+        { "value": "android-7-tablet", "label": "Android 7\" Tablet" }
+      ],
+      "min": 1
+    },
+    {
+      "id": "targets-web",
+      "type": "multiselect",
+      "group": "Target Dimensions",
+      "message": "Target dimensions",
+      "when": {
+        "any": [
+          { "field": "platform", "equals": "web-saas" },
+          { "field": "platform", "equals": "landing-page" }
+        ]
+      },
+      "options": [
+        { "value": "desktop-1920", "label": "Desktop 1920px" },
+        { "value": "tablet-1024", "label": "Tablet 1024px" },
+        { "value": "mobile-390", "label": "Mobile 390px" }
+      ],
+      "min": 1
+    },
+    {
+      "id": "targets-desktop",
+      "type": "multiselect",
+      "group": "Target Dimensions",
+      "message": "Target dimensions",
+      "when": {
+        "field": "platform",
+        "equals": "desktop-app"
+      },
+      "options": [
+        { "value": "macos-2880x1800", "label": "macOS 2880x1800" },
+        { "value": "windows-2560x1440", "label": "Windows 2560x1440" }
+      ],
+      "min": 1
+    },
+    {
+      "id": "font-family",
+      "type": "text",
+      "group": "Design System",
+      "message": "Font family",
+      "default": "Inter, system-ui",
+      "placeholder": "e.g., SF Pro, Roboto, Inter"
+    },
+    {
+      "id": "color-primary",
+      "type": "text",
+      "group": "Design System",
+      "message": "Primary color",
+      "default": "#6366F1"
+    },
+    {
+      "id": "color-secondary",
+      "type": "text",
+      "group": "Design System",
+      "message": "Secondary color",
+      "default": "#EC4899"
+    },
+    {
+      "id": "color-accent",
+      "type": "text",
+      "group": "Design System",
+      "message": "Accent color",
+      "default": "#10B981"
+    },
+    {
+      "id": "color-background",
+      "type": "text",
+      "group": "Design System",
+      "message": "Background color",
+      "default": "#FAFAFA"
+    },
+    {
+      "id": "color-surface",
+      "type": "text",
+      "group": "Design System",
+      "message": "Surface color",
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "color-text",
+      "type": "text",
+      "group": "Design System",
+      "message": "Text color",
+      "default": "#111827"
+    },
+    {
+      "id": "color-text-secondary",
+      "type": "text",
+      "group": "Design System",
+      "message": "Secondary text color",
+      "default": "#6B7280"
+    },
+    {
+      "id": "corner-radius",
+      "type": "select",
+      "group": "Design System",
+      "message": "Corner radius",
+      "default": "rounded",
+      "options": [
+        { "value": "sharp", "label": "Sharp (0-2px)", "hint": "Minimal rounding" },
+        { "value": "rounded", "label": "Rounded (8-12px)", "hint": "Standard corners" },
+        { "value": "pill", "label": "Pill (999px)", "hint": "Fully rounded" }
+      ]
+    },
+    {
+      "id": "button-style",
+      "type": "text",
+      "group": "Design System",
+      "message": "Button style",
+      "default": "filled with label"
+    },
+    {
+      "id": "card-style",
+      "type": "text",
+      "group": "Design System",
+      "message": "Card style",
+      "default": "elevated with shadow"
+    },
+    {
+      "id": "spacing",
+      "type": "select",
+      "group": "Design System",
+      "message": "Spacing",
+      "default": "comfortable",
+      "options": [
+        { "value": "compact", "label": "Compact", "hint": "Dense layout" },
+        { "value": "comfortable", "label": "Comfortable", "hint": "Balanced whitespace" },
+        { "value": "spacious", "label": "Spacious", "hint": "Generous whitespace" }
+      ]
+    },
+    {
+      "id": "mood",
+      "type": "text",
+      "group": "Design Direction",
+      "message": "Design mood",
+      "placeholder": "e.g., vibrant-competitive, calm-professional",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "references",
+      "type": "text",
+      "group": "Design Direction",
+      "message": "Style references",
+      "placeholder": "Comma-separated app names for style inspiration",
+      "default": "",
+      "required": false
+    },
+    {
+      "id": "screen-1-name",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 1 name",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "screen-1-description",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 1 description",
+      "validate": [
+        { "rule": "required" },
+        { "rule": "minLength", "value": 5 }
+      ]
+    },
+    {
+      "id": "screen-1-elements",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 1 UI elements",
+      "placeholder": "Comma-separated UI elements",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "screen-2-name",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 2 name",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "screen-2-description",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 2 description",
+      "validate": [
+        { "rule": "required" },
+        { "rule": "minLength", "value": 5 }
+      ]
+    },
+    {
+      "id": "screen-2-elements",
+      "type": "text",
+      "group": "Screens",
+      "message": "Screen 2 UI elements",
+      "placeholder": "Comma-separated UI elements",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "add-more-screens",
+      "type": "confirm",
+      "group": "Screens",
+      "message": "Add more screen definitions in the output file?",
+      "default": false
+    },
+    {
+      "id": "character-1-archetype",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Character 1 archetype",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "character-1-traits",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Character 1 traits",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "character-1-ability",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Character 1 special ability",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "character-1-visual",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Character 1 visual description",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "game-stats",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Game stats",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "placeholder": "Comma-separated stats (e.g., HP, Attack, Defense)",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "game-obstacles",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Obstacles",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "placeholder": "Comma-separated obstacles",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "game-resources",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Resources",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "placeholder": "Comma-separated resources",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "game-win-condition",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Win condition",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "has-multiplayer",
+      "type": "confirm",
+      "group": "Game-Specific",
+      "message": "Has multiplayer?",
+      "when": {
+        "field": "platform",
+        "equals": "mobile-game"
+      },
+      "default": false
+    },
+    {
+      "id": "max-players",
+      "type": "number",
+      "group": "Game-Specific",
+      "message": "Max players",
+      "when": {
+        "all": [
+          { "field": "platform", "equals": "mobile-game" },
+          { "field": "has-multiplayer", "equals": true }
+        ]
+      },
+      "default": 4,
+      "min": 2,
+      "max": 100
+    },
+    {
+      "id": "multiplayer-mode",
+      "type": "text",
+      "group": "Game-Specific",
+      "message": "Multiplayer mode",
+      "when": {
+        "all": [
+          { "field": "platform", "equals": "mobile-game" },
+          { "field": "has-multiplayer", "equals": true }
+        ]
+      },
+      "default": "co-op",
+      "placeholder": "e.g., co-op, PvP"
+    },
+    {
+      "id": "online-multiplayer",
+      "type": "confirm",
+      "group": "Game-Specific",
+      "message": "Online multiplayer?",
+      "when": {
+        "all": [
+          { "field": "platform", "equals": "mobile-game" },
+          { "field": "has-multiplayer", "equals": true }
+        ]
+      },
+      "default": true
+    },
+    {
+      "id": "web-layout",
+      "type": "text",
+      "group": "Web-Specific",
+      "message": "Layout",
+      "when": {
+        "any": [
+          { "field": "platform", "equals": "web-saas" },
+          { "field": "platform", "equals": "landing-page" }
+        ]
+      },
+      "placeholder": "e.g., sidebar, top-nav",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "web-features",
+      "type": "text",
+      "group": "Web-Specific",
+      "message": "Key features",
+      "when": {
+        "any": [
+          { "field": "platform", "equals": "web-saas" },
+          { "field": "platform", "equals": "landing-page" }
+        ]
+      },
+      "placeholder": "Comma-separated features",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "brief-name",
+      "type": "text",
+      "group": "Save Brief",
+      "message": "Save brief as",
+      "placeholder": "my-app-brief",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "confirm-brief",
+      "type": "confirm",
+      "group": "Save Brief",
+      "message": "Confirm brief?",
+      "default": true
+    }
+  ],
+  "output": {
+    "format": "yaml",
+    "path": "concept-brief.yaml"
+  }
+}

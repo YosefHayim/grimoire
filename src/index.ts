@@ -53,3 +53,5 @@ export { recordSelection, getOrderedOptions, clearMruData } from './mru';
 export { InkRenderer } from './renderers/ink';
 export { ClackRenderer } from './renderers/clack';
 export { saveTemplate, loadTemplate, listTemplates, deleteTemplate } from './templates';
+export { saveProgress, loadProgress, clearProgress } from './progress';
+export type { SavedProgress } from './progress';

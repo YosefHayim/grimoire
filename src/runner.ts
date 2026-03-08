@@ -9,6 +9,7 @@ import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
 import { evaluateCondition } from './conditions';
 import { loadCachedAnswers, saveCachedAnswers } from './cache';
+import { saveProgress, loadProgress, clearProgress } from './progress';
 import { recordSelection, getOrderedOptions } from './mru';
 import type { ActionConfig, PreFlightCheck, SelectChoice, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
 
@@ -32,6 +33,7 @@ export interface RunWizardOptions {
   asyncValidate?: (stepId: string, value: unknown, answers: Record<string, unknown>) => Promise<string | null>;
   cache?: boolean | { dir?: string };
   mru?: boolean;
+  resume?: boolean;
 }
 
 export function runPreFlightChecks(
@@ -111,6 +113,22 @@ export async function runWizard(
   const cacheDir = typeof options?.cache === 'object' ? options.cache.dir : undefined;
   const mruEnabled = !isMock && options?.mru !== false;
   let state = createWizardState(config);
+
+  const resumeEnabled = !isMock && options?.resume !== false;
+  if (resumeEnabled) {
+    const saved = loadProgress(config.meta.name);
+    if (saved) {
+      const stepExists = config.steps.some(s => s.id === saved.currentStepId);
+      if (stepExists) {
+        state = {
+          ...state,
+          currentStepId: saved.currentStepId,
+          answers: { ...state.answers, ...saved.answers },
+          history: saved.history,
+        };
+      }
+    }
+  }
 
   const cachedAnswers = cacheEnabled
     ? loadCachedAnswers(config.meta.name, cacheDir)
@@ -240,6 +258,12 @@ export async function runWizard(
         if (!isMock && isUserCancel(error)) {
           state = wizardReducer(state, { type: 'CANCEL' }, config);
           options?.onCancel?.(state);
+          const passwordStepIds = config.steps.filter(s => s.type === 'password').map(s => s.id);
+          saveProgress(config.meta.name, {
+            currentStepId: state.currentStepId,
+            answers: state.answers,
+            history: state.history,
+          }, undefined, passwordStepIds);
           emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: true }, theme);
           if (!quiet) {
             console.log(theme.warning('\n  Wizard cancelled.\n'));
@@ -271,6 +295,10 @@ export async function runWizard(
         }
       }
       saveCachedAnswers(config.meta.name, answersToCache, cacheDir);
+    }
+
+    if (state.status === 'done') {
+      clearProgress(config.meta.name);
     }
 
     return state.answers;

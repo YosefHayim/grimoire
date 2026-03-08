@@ -37,6 +37,7 @@ interface RunCommandOpts {
   mock?: string;
   json?: boolean;
   cache?: boolean;
+  resume?: boolean;
   renderer?: string;
   template?: string;
 }
@@ -63,6 +64,7 @@ program
   .option('--mock <json>', 'Run wizard with preset answers (JSON string)')
   .option('--json', 'Output structured JSON result to stdout')
   .option('--no-cache', 'Disable answer caching for this run')
+  .option('--no-resume', 'Disable progress resume for this run')
   .option('--renderer <type>', 'Renderer to use: inquirer (default), ink, or clack', 'inquirer')
   .option('--template <name>', 'Load a saved template as defaults')
   .action(async (configPath: string, opts: RunCommandOpts) => {
@@ -95,6 +97,7 @@ program
         mockAnswers,
         templateAnswers,
         cache: opts.cache,
+        resume: opts.resume,
       });
 
       const rawOutputPath = opts.output ?? config.output?.path;

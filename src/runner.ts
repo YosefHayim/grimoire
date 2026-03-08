@@ -3,7 +3,7 @@ import { createWizardState, getVisibleSteps, wizardReducer } from './engine';
 import { resolveTheme } from './theme';
 import { InquirerRenderer } from './renderers/inquirer';
 import { resolveEnvDefault, resolveEnvDefaultBoolean, resolveEnvDefaultNumber } from './resolve';
-import { resolveTemplate } from './template';
+import { resolveTemplate, resolveTemplateStrict } from './template';
 import { renderBanner } from './banner';
 import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
@@ -593,8 +593,8 @@ async function executeActions(
       continue;
     }
 
-    const resolvedCommand = resolveTemplate(action.run, answers);
-    const resolvedName = action.name ? resolveTemplate(action.name, answers) : undefined;
+    const resolvedCommand = resolveTemplateStrict(action.run, answers);
+    const resolvedName = action.name ? resolveTemplateStrict(action.name, answers) : undefined;
     const label = resolvedName ?? resolvedCommand;
 
     try {

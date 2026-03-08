@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTemplate } from '../template';
+import { resolveTemplate, resolveTemplateStrict } from '../template';
 
 describe('resolveTemplate', () => {
   it('resolves single placeholder', () => {
@@ -44,5 +44,39 @@ describe('resolveTemplate', () => {
 
   it('handles nested braces gracefully', () => {
     expect(resolveTemplate('{{a}}', { a: '{{b}}' })).toBe('{{b}}');
+  });
+});
+
+describe('resolveTemplateStrict', () => {
+  it('resolves known step-ids', () => {
+    expect(resolveTemplateStrict('echo {{name}}', { name: 'hello' })).toBe('echo hello');
+  });
+
+  it('resolves arrays as comma-separated', () => {
+    expect(resolveTemplateStrict('{{tools}}', { tools: ['a', 'b'] })).toBe('a, b');
+  });
+
+  it('throws on unknown step-id', () => {
+    expect(() => resolveTemplateStrict('echo {{missing}}', {})).toThrow(
+      'Action references unknown step "missing"',
+    );
+  });
+
+  it('throws on skipped step (undefined value)', () => {
+    expect(() => resolveTemplateStrict('echo {{skipped}}', {})).toThrow(
+      'Action references unknown step "skipped"',
+    );
+  });
+
+  it('handles multiple placeholders with one missing', () => {
+    expect(() => resolveTemplateStrict('{{a}} {{b}}', { a: 'ok' })).toThrow(
+      'Action references unknown step "b"',
+    );
+  });
+
+  it('handles boolean and number values', () => {
+    expect(resolveTemplateStrict('--port={{port}} --verbose={{v}}', { port: 3000, v: true })).toBe(
+      '--port=3000 --verbose=true',
+    );
   });
 });

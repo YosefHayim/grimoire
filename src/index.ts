@@ -46,7 +46,7 @@ export { defineWizard } from './define';
 export { InquirerRenderer } from './renderers/inquirer';
 export type { GrimoirePlugin, StepPlugin } from './plugins';
 export { registerPlugin, getPluginStep, clearPlugins } from './plugins';
-export { resolveTemplate } from './template';
+export { resolveTemplate, resolveTemplateStrict } from './template';
 export { renderBanner } from './banner';
 export { loadCachedAnswers, saveCachedAnswers, clearCache, getCacheDir, slugify } from './cache';
 export { recordSelection, getOrderedOptions, clearMruData } from './mru';

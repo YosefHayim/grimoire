@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-08
+
+### Added
+- Clack-style renderer (`--renderer clack`) with connected guide lines, collapsed answered steps, intro/outro framing, bordered note boxes, and integrated spinners
+- 6 built-in theme presets: `default`, `catppuccin`, `dracula`, `nord`, `tokyonight`, `monokai` — set via `preset` in theme config
+- Event-driven architecture — runner emits 16 `WizardEvent` types; renderers subscribe via `onEvent()`
+- `note` step type — display bordered info boxes inline in the wizard flow
+- Progress persistence — wizard auto-resumes from where you left off after Ctrl+C (`--no-resume` to disable)
+- Step review screen — set `review: true` in meta to confirm all answers before submission
+- Wizard pipelines — chain multiple wizard configs in sequence, forwarding accumulated answers via `runPipeline()`
+- Unicode symbol module with automatic ASCII fallback for non-unicode terminals
+
 ## [0.3.1] - 2026-03-08
 
 ### Changed
@@ -70,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic step types: text, select, confirm
 - YAML config parsing
 
-[Unreleased]: https://github.com/YosefHayim/grimoire/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/YosefHayim/grimoire/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/YosefHayim/grimoire/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/YosefHayim/grimoire/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/YosefHayim/grimoire/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/YosefHayim/grimoire/compare/v0.1.0...v0.2.0

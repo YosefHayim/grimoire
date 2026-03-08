@@ -45,7 +45,7 @@ interface RunCommandOpts {
 program
   .name('grimoire')
   .description('Config-driven CLI wizard framework')
-  .version('0.3.1')
+  .version('0.4.0')
   .option('--no-color', 'Disable colored output')
   .option('--plain', 'Plain output mode (no colors, no banner)')
   .hook('preAction', () => {

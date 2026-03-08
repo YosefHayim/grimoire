@@ -47,6 +47,12 @@ Grimoire is a config-driven CLI wizard framework for Node.js. You write a YAML o
 - **`optionsFrom`** — load select/multiselect/search options from an external JSON or YAML file
 - **Lifecycle hooks** — `onBeforeStep` and `onAfterStep` callbacks in the programmatic API
 - **Ink renderer** — alternative renderer with box-drawing characters and progress percentages
+- **Clack-style renderer** — connected `│` guide lines, `◇` collapsed steps, `┌`/`└` session framing, bordered note boxes
+- **6 theme presets** — catppuccin, dracula, nord, tokyonight, monokai; set `preset` in your theme config
+- **Note step type** — display bordered info boxes inline in the wizard flow
+- **Progress persistence** — auto-resume from where you left off after Ctrl+C; `--no-resume` to disable
+- **Step review screen** — review all answers before final submission; set `review: true` in meta
+- **Wizard pipelines** — chain multiple wizard configs, forwarding answers between them
 - **ASCII art banner** — figlet + gradient banner shown at startup; suppressed with `--plain`
 - **`--plain` / `--no-color` flags** — disable colors and banner for plain-text environments
 
@@ -125,8 +131,9 @@ grimoire run setup.yaml --json
 | `--mock <json>` | Run non-interactively with preset answers (JSON object string) |
 | `--json` | Emit a structured JSON result envelope to stdout |
 | `--no-cache` | Disable answer caching for this run |
+| `--no-resume` | Disable progress resume for this run |
 | `--template <name>` | Load a saved template as default answers |
-| `--renderer <type>` | Renderer to use: `inquirer` (default) or `ink` |
+| `--renderer <type>` | Renderer to use: `inquirer` (default), `ink`, or `clack` |
 | `--plain` | Plain output mode (no colors, no banner) |
 | `--no-color` | Disable colored output |
 
@@ -468,6 +475,19 @@ A binary toggle with custom labels for each state. Returns a boolean.
   default: true
 ```
 
+### `note`
+
+Displays a bordered info box inline in the wizard flow. No input is collected. Useful for showing instructions, warnings, or section headers between prompts.
+
+```yaml
+- id: info
+  type: note
+  message: Setup Complete
+  description: "Run npm install to get started"
+```
+
+The `message` becomes the box title and `description` is the body text. Note steps are skipped in `--mock` mode and excluded from the answers output.
+
 ---
 
 ## Dynamic Options (`optionsFrom`)
@@ -727,6 +747,26 @@ theme:
 | `stepDone` | Completed step indicator |
 | `stepPending` | Upcoming step indicator |
 | `pointer` | Selection cursor in lists |
+
+### Theme presets
+
+Instead of specifying individual tokens, pick a built-in preset with a single line:
+
+```yaml
+theme:
+  preset: catppuccin
+```
+
+| Preset | Primary color | Style |
+|--------|--------------|-------|
+| `default` | `#7C3AED` | Purple |
+| `catppuccin` | `#cba6f7` | Soft lavender (Mocha) |
+| `dracula` | `#bd93f9` | Purple on dark |
+| `nord` | `#88c0d0` | Arctic blue |
+| `tokyonight` | `#7aa2f7` | Night blue |
+| `monokai` | `#a6e22e` | Vibrant green |
+
+Any `tokens` or `icons` you set alongside `preset` override the preset's values.
 
 ---
 
@@ -1029,6 +1069,25 @@ Or from the CLI:
 grimoire run setup.yaml --renderer ink
 ```
 
+### Clack renderer
+
+The `ClackRenderer` gives your wizard a clack-style visual flow: a continuous `│` guide line connects all prompts, answered steps collapse to a single `◇ Question · answer` line, and the session opens with a `┌` header and closes with a `└` outro. Note steps render as bordered boxes. Spinners animate during async operations.
+
+```bash
+grimoire run setup.yaml --renderer clack
+```
+
+Or programmatically:
+
+```typescript
+import { runWizard } from 'grimoire-wizard'
+import { ClackRenderer } from 'grimoire-wizard'
+
+const answers = await runWizard(config, {
+  renderer: new ClackRenderer(),
+})
+```
+
 ### Exported types
 
 ```typescript
@@ -1045,6 +1104,7 @@ import type {
   EditorStepConfig,
   PathStepConfig,
   ToggleStepConfig,
+  NoteStepConfig,
   SelectOption,
   ValidationRule,
   Condition,
@@ -1053,6 +1113,7 @@ import type {
   WizardState,
   WizardTransition,
   WizardRenderer,
+  WizardEvent,
   PreFlightCheck,
   RunWizardOptions,
   GrimoirePlugin,
@@ -1093,6 +1154,14 @@ import {
   deleteTemplate,       // Delete a named template
   // Banner
   renderBanner,         // Render the ASCII art banner for a wizard name
+  // Renderers
+  ClackRenderer,        // Clack-style renderer with guide lines and collapsed steps
+  // Pipelines
+  runPipeline,          // Chain multiple wizard configs in sequence
+  // Progress persistence
+  saveProgress,         // Save wizard progress to disk
+  loadProgress,         // Load saved wizard progress
+  clearProgress,        // Delete saved wizard progress
 } from 'grimoire-wizard'
 ```
 
@@ -1128,6 +1197,74 @@ const answers = await runWizard(config, { cache: false })
 // Use a custom cache directory
 const answers = await runWizard(config, { cache: { dir: '/tmp/my-cache' } })
 ```
+
+---
+
+## Progress Persistence
+
+If you press Ctrl+C mid-wizard, grimoire saves your progress automatically. The next time you run the same wizard, it resumes from where you left off, with all previous answers pre-filled.
+
+Progress files are stored in `~/.config/grimoire/progress/` as JSON, one file per wizard.
+
+Disable resume for a single run:
+
+```bash
+grimoire run setup.yaml --no-resume
+```
+
+Or programmatically:
+
+```typescript
+const answers = await runWizard(config, { resume: false })
+```
+
+Manage progress files directly:
+
+```typescript
+import { saveProgress, loadProgress, clearProgress } from 'grimoire-wizard'
+
+const saved = loadProgress('Project Setup')
+clearProgress('Project Setup')
+```
+
+---
+
+## Review Screen
+
+Set `review: true` in your wizard's `meta` block to show a summary of all answers before the wizard completes. The user can confirm or go back to change any answer.
+
+```yaml
+meta:
+  name: Deploy Wizard
+  review: true
+```
+
+The review screen lists every answered step with its question and value. Selecting an answer jumps back to that step. Confirming submits the wizard.
+
+---
+
+## Wizard Pipelines
+
+Pipelines let you chain multiple wizard configs in sequence. Each wizard's answers are forwarded to the next, so later wizards can reference earlier answers in their `when` conditions and `default` values.
+
+```typescript
+import { runPipeline } from 'grimoire-wizard'
+
+const results = await runPipeline([
+  { config: setupConfig },
+  { config: deployConfig, when: { field: 'name', equals: 'my-app' } },
+])
+```
+
+Each entry in the array accepts:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `config` | `WizardConfig` | The wizard config to run |
+| `mockAnswers` | `Record<string, unknown>` | Preset answers for this stage |
+| `when` | `Condition` | Skip this stage if the condition is not met |
+
+`runPipeline` returns an array of answer objects, one per stage that ran. Stages that are skipped via `when` return `null`.
 
 ---
 
@@ -1391,6 +1528,23 @@ A deployment wizard with two pre-flight checks (Node.js and Git). Shows how `che
 
 ```bash
 grimoire run examples/yaml/with-checks.yaml
+```
+
+### `examples/yaml/themed-catppuccin.yaml`
+
+A 3-step project setup wizard using the `catppuccin` theme preset. Shows how a single `preset` line replaces manual token configuration.
+
+```bash
+grimoire run examples/yaml/themed-catppuccin.yaml
+grimoire run examples/json/themed-catppuccin.json   # JSON equivalent
+```
+
+### `examples/yaml/pipeline.yaml`
+
+A multi-stage wizard demonstrating the pipeline concept using `note` steps as stage dividers. Shows how to structure a wizard that covers multiple logical phases in a single config.
+
+```bash
+grimoire run examples/yaml/pipeline.yaml
 ```
 
 ---

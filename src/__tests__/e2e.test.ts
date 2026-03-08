@@ -248,3 +248,106 @@ describe('E2E: validate all example configs', () => {
     parseWizardConfig(config);
   });
 });
+
+describe('E2E: clack renderer', () => {
+  it('runs basic wizard with clack renderer in mock mode', () => {
+    const mock = JSON.stringify({
+      'project-name': 'clack-test',
+      'description': 'Testing clack',
+      'language': 'typescript',
+      'features': ['linting'],
+      'license': 'mit',
+      'confirm': true,
+    });
+
+    const output = run(`run examples/yaml/basic.yaml --renderer clack --mock '${mock}' --json`);
+
+    // Clack renderer outputs decorative lines before JSON
+    expect(output).toContain('┌');
+    expect(output).toContain('◇');
+
+    const jsonMatch = output.match(/\n(\{[\s\S]*\})\s*$/);
+    const result = JSON.parse(jsonMatch![1]) as { ok: boolean; wizard?: string; answers?: Record<string, unknown> };
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Project Setup Wizard');
+    expect(result.answers?.['project-name']).toBe('clack-test');
+  });
+});
+
+describe('E2E: themed-catppuccin.yaml with preset', () => {
+  it('runs wizard with catppuccin preset', () => {
+    const mock = JSON.stringify({
+      'project-name': 'catppuccin-app',
+      'framework': 'nextjs',
+      'confirm': true,
+    });
+
+    const result = runJson(`run examples/yaml/themed-catppuccin.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Catppuccin Themed Setup');
+    expect(result.answers?.['project-name']).toBe('catppuccin-app');
+    expect(result.answers?.['framework']).toBe('nextjs');
+  });
+});
+
+describe('E2E: note step type', () => {
+  it('validates config with note steps', () => {
+    const output = run('validate examples/yaml/pipeline.yaml');
+    expect(output).toContain('Valid wizard config');
+    expect(output).toContain('Pipeline Demo');
+  });
+
+  it('runs pipeline demo with note steps in mock mode', () => {
+    const mock = JSON.stringify({
+      'project-name': 'pipeline-app',
+      'language': 'typescript',
+      'confirm': true,
+    });
+
+    const result = runJson(`run examples/yaml/pipeline.yaml --mock '${mock}' --json`);
+
+    expect(result.ok).toBe(true);
+    expect(result.wizard).toBe('Pipeline Demo');
+    expect(result.answers?.['project-name']).toBe('pipeline-app');
+  });
+});
+
+describe('E2E: wizard pipelines', () => {
+  it('runs pipeline with file path configs', async () => {
+    const { runPipeline } = await import('../pipeline');
+
+    const results = await runPipeline([
+      {
+        config: resolve(EXAMPLES, 'yaml', 'themed-catppuccin.yaml'),
+        mockAnswers: { 'project-name': 'pipe-app', 'framework': 'astro', 'confirm': true },
+      },
+    ]);
+
+    expect(results['Catppuccin Themed Setup']).toBeDefined();
+    expect(results['Catppuccin Themed Setup']['project-name']).toBe('pipe-app');
+  });
+});
+
+describe('E2E: clack renderer with preset theme', () => {
+  it('combines clack renderer with catppuccin preset', () => {
+    const mock = JSON.stringify({
+      'project-name': 'clack-catppuccin',
+      'framework': 'remix',
+      'confirm': true,
+    });
+
+    const output = run(`run examples/yaml/themed-catppuccin.yaml --renderer clack --mock '${mock}' --json`);
+
+    expect(output).toContain('┌');
+    expect(output).toContain('◇');
+
+    const jsonMatch = output.match(/\n(\{[\s\S]*\})\s*$/);
+    const result = JSON.parse(jsonMatch![1]) as { ok: boolean; answers?: Record<string, unknown> };
+
+    expect(result.ok).toBe(true);
+    expect(result.answers?.['project-name']).toBe('clack-catppuccin');
+    expect(result.answers?.['framework']).toBe('remix');
+  });
+});

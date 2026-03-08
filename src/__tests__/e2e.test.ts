@@ -157,6 +157,27 @@ describe('E2E: --dry-run', () => {
     expect(output).toContain('project-name');
     expect(output).toContain('language');
   });
+
+  it('shows onComplete handler in dry-run output', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'grimoire-dryrun-oc-'));
+    const configFile = join(tmpDir, 'wizard.json');
+    writeFileSync(
+      configFile,
+      JSON.stringify({
+        meta: { name: 'DryRun OnComplete Test' },
+        onComplete: './handlers/my-handler.ts',
+        steps: [{ id: 'name', type: 'text', message: 'Name?' }],
+        actions: [{ name: 'Echo', run: 'echo hello' }],
+      }),
+    );
+
+    const result = run(`run "${configFile}" --dry-run`);
+    expect(result).toContain('onComplete handler');
+    expect(result).toContain('./handlers/my-handler.ts');
+    expect(result).toContain('Echo');
+
+    rmSync(tmpDir, { recursive: true });
+  });
 });
 
 describe('E2E: invalid config', () => {

@@ -362,6 +362,12 @@ function printDryRun(config: WizardConfig): void {
 
   console.log();
 
+  if (config.onComplete) {
+    console.log(`  ${theme.bold('onComplete handler:')}`);
+    console.log(`    ${theme.muted(config.onComplete)}`);
+    console.log();
+  }
+
   if (config.actions && config.actions.length > 0) {
     console.log(`  ${theme.bold('Post-wizard actions:')}`);
     for (const action of config.actions) {

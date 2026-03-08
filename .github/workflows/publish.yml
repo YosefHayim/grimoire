@@ -9,11 +9,11 @@ name: Publish
 #      typecheck → test → build → git tag → GitHub Release → npm publish.
 #   3. If the version already has a tag, the workflow exits early (no-op).
 #
-# Setup required:
-#   1. Add NPM_TOKEN to repository secrets (Settings → Secrets → Actions).
-#      Generate at: https://www.npmjs.com/settings/<user>/tokens (Automation type).
-#   2. Enable "Allow GitHub Actions to create and approve pull requests" in
-#      Settings → Actions → General → Workflow permissions (for tag creation).
+# Authentication: Uses npm Trusted Publishing (OIDC).
+#   No NPM_TOKEN secret needed. One-time setup on npmjs.com:
+#   1. Go to package Settings → Configure Trusted Publishing.
+#   2. Add this repository (YosefHayim/grimoire) and workflow (publish.yml).
+#   3. The id-token:write permission + --provenance flag handle the rest.
 #
 # To trigger a release:
 #   1. Bump version in package.json (and cli.ts .version() if applicable).
@@ -95,8 +95,6 @@ jobs:
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.version.outputs.changed == 'true'

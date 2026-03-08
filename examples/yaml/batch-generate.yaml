@@ -1,0 +1,156 @@
+meta:
+  name: "Batch Generation Setup"
+  description: "Configure batch generation for multiple apps"
+  version: "1.0.0"
+
+theme:
+  preset: nord
+
+steps:
+  - id: shared-image-model
+    type: select
+    group: "Shared Settings"
+    message: "Default image generation model"
+    options:
+      - { value: gemini-3.1-flash-image-preview, label: "Flash (Fast & Cheap)", hint: "Near-Pro quality at ~$0.067/img" }
+      - { value: gemini-3-pro-image-preview, label: "Pro (Best Quality)", hint: "Top quality, 94% text accuracy" }
+    default: gemini-3.1-flash-image-preview
+
+  - id: shared-text-model
+    type: select
+    group: "Shared Settings"
+    message: "Default text model"
+    options:
+      - { value: gemini-2.5-flash, label: "Gemini Flash (Fast)" }
+      - { value: gemini-2.5-pro, label: "Gemini Pro (Best Prompts)" }
+    default: gemini-2.5-flash
+
+  - id: shared-count
+    type: number
+    group: "Shared Settings"
+    message: "Default screenshot count per app"
+    default: 10
+    min: 1
+    max: 50
+
+  - id: shared-providers
+    type: multiselect
+    group: "Shared Settings"
+    message: "Default providers"
+    options:
+      - { value: gemini, label: "Gemini" }
+      - { value: openai, label: "OpenAI" }
+    default: ["gemini"]
+    min: 1
+
+  - id: shared-device-targets
+    type: multiselect
+    group: "Shared Settings"
+    message: "Default device targets"
+    options:
+      - { value: iphone, label: "iPhone" }
+      - { value: ipad, label: "iPad" }
+      - { value: watch, label: "Apple Watch" }
+      - { value: android-phone, label: "Android Phone" }
+      - { value: android-tablet, label: "Android Tablet" }
+    default: ["iphone"]
+    min: 1
+
+  - id: app-1-note
+    type: note
+    group: "App 1"
+    message: "First App Configuration"
+    description: "Configure the first app in the batch"
+
+  - id: app-1-name
+    type: text
+    group: "App 1"
+    message: "App 1 name"
+    validate:
+      - rule: required
+
+  - id: app-1-description
+    type: text
+    group: "App 1"
+    message: "App 1 description"
+    validate:
+      - rule: required
+      - rule: minLength
+        value: 10
+
+  - id: app-1-visual-style
+    type: select
+    group: "App 1"
+    message: "App 1 visual style"
+    options:
+      - { value: auto, label: "Auto (AI picks)" }
+      - { value: photorealistic, label: "Photorealistic" }
+      - { value: 3d-cartoon, label: "3D Cartoon" }
+      - { value: isometric, label: "Isometric" }
+      - { value: claymorphism, label: "Claymorphism" }
+      - { value: flat-2d, label: "Flat 2D" }
+      - { value: illustration, label: "Illustration" }
+    default: auto
+
+  - id: app-1-count
+    type: number
+    group: "App 1"
+    message: "App 1 screenshot count (leave default to use shared)"
+    default: 10
+    min: 1
+    max: 50
+
+  - id: add-app-2
+    type: confirm
+    group: "App 2"
+    message: "Add a second app to the batch?"
+    default: false
+
+  - id: app-2-name
+    type: text
+    group: "App 2"
+    message: "App 2 name"
+    when:
+      field: add-app-2
+      equals: true
+    validate:
+      - rule: required
+
+  - id: app-2-description
+    type: text
+    group: "App 2"
+    message: "App 2 description"
+    when:
+      field: add-app-2
+      equals: true
+    validate:
+      - rule: required
+      - rule: minLength
+        value: 10
+
+  - id: app-2-visual-style
+    type: select
+    group: "App 2"
+    message: "App 2 visual style"
+    when:
+      field: add-app-2
+      equals: true
+    options:
+      - { value: auto, label: "Auto (AI picks)" }
+      - { value: photorealistic, label: "Photorealistic" }
+      - { value: 3d-cartoon, label: "3D Cartoon" }
+      - { value: isometric, label: "Isometric" }
+      - { value: claymorphism, label: "Claymorphism" }
+      - { value: flat-2d, label: "Flat 2D" }
+      - { value: illustration, label: "Illustration" }
+    default: auto
+
+  - id: confirm-batch
+    type: confirm
+    group: "Confirmation"
+    message: "Generate batch config file?"
+    default: true
+
+output:
+  format: json
+  path: batch-config.json

@@ -1,0 +1,84 @@
+meta:
+  name: "App Store Connect Upload"
+  description: "Upload screenshots to App Store Connect"
+  version: "1.0.0"
+
+theme:
+  preset: monokai
+
+steps:
+  - id: run-id
+    type: text
+    group: "Run Selection"
+    message: "Run ID (from generation results)"
+    validate:
+      - rule: required
+    placeholder: "e.g., 2024-01-15T10-30-00"
+
+  - id: asc-info-note
+    type: note
+    group: "ASC Credentials"
+    message: "App Store Connect API Key"
+    description: "You need an App Store Connect API key. Create one at https://appstoreconnect.apple.com/access/api"
+
+  - id: issuer-id
+    type: text
+    group: "ASC Credentials"
+    message: "Issuer ID"
+    validate:
+      - rule: required
+    placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+  - id: key-id
+    type: text
+    group: "ASC Credentials"
+    message: "Key ID"
+    validate:
+      - rule: required
+    placeholder: "XXXXXXXXXX"
+
+  - id: key-path
+    type: path
+    group: "ASC Credentials"
+    message: "Path to API key (.p8 file)"
+    validate:
+      - rule: required
+    placeholder: "~/.appstoreconnect/AuthKey_XXXXXXXXXX.p8"
+
+  - id: app-id
+    type: text
+    group: "App Details"
+    message: "App ID"
+    validate:
+      - rule: required
+    placeholder: "e.g., 1234567890"
+
+  - id: localization-id
+    type: text
+    group: "App Details"
+    message: "Localization ID"
+    validate:
+      - rule: required
+    placeholder: "e.g., en-US"
+
+  - id: display-type
+    type: select
+    group: "App Details"
+    message: "Display type"
+    options:
+      - { value: APP_IPHONE_67, label: 'iPhone 6.7"' }
+      - { value: APP_IPHONE_65, label: 'iPhone 6.5"' }
+      - { value: APP_IPAD_PRO_129, label: 'iPad Pro 12.9"' }
+      - { value: APP_IPAD_PRO_3GEN_129, label: 'iPad Pro 12.9" (3rd Gen)' }
+      - { value: APP_APPLE_WATCH_ULTRA, label: "Apple Watch Ultra" }
+      - { value: APP_APPLE_WATCH_SERIES_7, label: "Apple Watch Series 7" }
+    default: APP_IPHONE_67
+
+  - id: confirm-upload
+    type: confirm
+    group: "Confirmation"
+    message: "Upload screenshots to App Store Connect?"
+    default: true
+
+output:
+  format: json

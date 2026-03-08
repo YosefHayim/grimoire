@@ -83,6 +83,7 @@ function getStepDefault(step: StepConfig): unknown {
       return step.default;
     case 'password':
     case 'message':
+    case 'note':
       return undefined;
   }
 }
@@ -290,6 +291,8 @@ function renderStep(
     case 'message':
       renderer.renderMessage(step, state, theme);
       return Promise.resolve(true);
+    case 'note':
+      return Promise.resolve(true);
   }
 }
 
@@ -344,6 +347,7 @@ function resolveStepDefaults(
     }
     case 'password':
     case 'message':
+    case 'note':
       return step;
   }
 }
@@ -358,7 +362,7 @@ function getCachedDefault<T>(
 
 function applyTemplateDefaults(step: StepConfig, templateAnswers: Record<string, unknown>): StepConfig {
   if (!(step.id in templateAnswers)) return step;
-  if (step.type === 'password' || step.type === 'message') return step;
+  if (step.type === 'password' || step.type === 'message' || step.type === 'note') return step;
 
   const value = templateAnswers[step.id];
 
@@ -456,6 +460,7 @@ function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>
     case 'confirm':
     case 'toggle':
     case 'message':
+    case 'note':
       return {
         ...step,
         description: step.description ? resolveTemplate(step.description, answers) : undefined,

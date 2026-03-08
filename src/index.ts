@@ -12,6 +12,8 @@ export type {
   PathStepConfig,
   ToggleStepConfig,
   MessageStepConfig,
+  NoteStepConfig,
+  WizardEvent,
   SelectOption,
   SeparatorOption,
   SelectChoice,

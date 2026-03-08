@@ -159,6 +159,11 @@ const messageStepSchema = z.object({
   type: z.literal('message'),
 });
 
+const noteStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('note'),
+});
+
 const stepConfigSchema = z.discriminatedUnion('type', [
   textStepSchema,
   selectStepSchema,
@@ -171,6 +176,7 @@ const stepConfigSchema = z.discriminatedUnion('type', [
   pathStepSchema,
   toggleStepSchema,
   messageStepSchema,
+  noteStepSchema,
 ]);
 
 const hexColorSchema = z.string().regex(
@@ -361,6 +367,7 @@ export {
   separatorOptionSchema,
   selectChoiceSchema,
   messageStepSchema,
+  noteStepSchema,
   stepConfigSchema,
   themeConfigSchema,
   preFlightCheckSchema,

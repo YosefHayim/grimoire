@@ -162,4 +162,56 @@ describe('parseWizardConfig', () => {
     expect(config.theme?.tokens?.primary).toBe('#FF0000');
     expect(config.theme?.icons?.pointer).toBe('▶');
   });
+
+  it('parses valid config with select step using optionsFrom', () => {
+    const config = parseWizardConfig({
+      meta: { name: 'Test' },
+      steps: [
+        {
+          id: 's1', type: 'select', message: 'Pick one',
+          optionsFrom: './options.json',
+        },
+      ],
+    });
+    expect(config.steps).toHaveLength(1);
+  });
+
+  it('parses valid config with multiselect step using optionsFrom', () => {
+    const config = parseWizardConfig({
+      meta: { name: 'Test' },
+      steps: [
+        {
+          id: 's1', type: 'multiselect', message: 'Pick many',
+          optionsFrom: './options.yaml',
+        },
+      ],
+    });
+    expect(config.steps).toHaveLength(1);
+  });
+
+  it('throws when step has both options and optionsFrom', () => {
+    expect(() =>
+      parseWizardConfig({
+        meta: { name: 'Test' },
+        steps: [
+          {
+            id: 's1', type: 'select', message: 'Pick',
+            options: [{ value: 'a', label: 'A' }],
+            optionsFrom: './options.json',
+          },
+        ],
+      }),
+    ).toThrow(/both/);
+  });
+
+  it('throws when select step has neither options nor optionsFrom', () => {
+    expect(() =>
+      parseWizardConfig({
+        meta: { name: 'Test' },
+        steps: [
+          { id: 's1', type: 'select', message: 'Pick' },
+        ],
+      }),
+    ).toThrow(/must have either/);
+  });
 });

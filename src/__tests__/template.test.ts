@@ -37,4 +37,12 @@ describe('resolveTemplate', () => {
   it('converts booleans to string', () => {
     expect(resolveTemplate('Enabled: {{flag}}', { flag: true })).toBe('Enabled: true');
   });
+
+  it('resolves in option-like context', () => {
+    expect(resolveTemplate('{{env}} Server', { env: 'Production' })).toBe('Production Server');
+  });
+
+  it('handles nested braces gracefully', () => {
+    expect(resolveTemplate('{{a}}', { a: '{{b}}' })).toBe('{{b}}');
+  });
 });

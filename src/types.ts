@@ -29,8 +29,14 @@ export interface SelectOption {
   value: string;
   label: string;
   hint?: string;
-  disabled?: boolean;
+  disabled?: boolean | string;
 }
+
+export interface SeparatorOption {
+  separator: string;
+}
+
+export type SelectChoice = SelectOption | SeparatorOption;
 
 // ─── Step Configs ────────────────────────────────────────────────────────────
 
@@ -38,6 +44,7 @@ export interface BaseStepConfig {
   id: string;
   type: string;
   message: string;
+  description?: string;
   next?: string;
   when?: Condition;
   keepValuesOnPrevious?: boolean;
@@ -54,17 +61,23 @@ export interface TextStepConfig extends BaseStepConfig {
 
 export interface SelectStepConfig extends BaseStepConfig {
   type: 'select';
-  options: SelectOption[];
+  options: SelectChoice[];
+  optionsFrom?: string;
   default?: string;
   routes?: Record<string, string>;
+  pageSize?: number;
+  loop?: boolean;
 }
 
 export interface MultiSelectStepConfig extends BaseStepConfig {
   type: 'multiselect';
-  options: SelectOption[];
+  options: SelectChoice[];
+  optionsFrom?: string;
   default?: string[];
   min?: number;
   max?: number;
+  pageSize?: number;
+  loop?: boolean;
 }
 
 export interface ConfirmStepConfig extends BaseStepConfig {
@@ -87,9 +100,12 @@ export interface NumberStepConfig extends BaseStepConfig {
 
 export interface SearchStepConfig extends BaseStepConfig {
   type: 'search';
-  options: SelectOption[];
+  options: SelectChoice[];
+  optionsFrom?: string;
   default?: string;
   placeholder?: string;
+  pageSize?: number;
+  loop?: boolean;
 }
 
 export interface EditorStepConfig extends BaseStepConfig {
@@ -112,6 +128,10 @@ export interface ToggleStepConfig extends BaseStepConfig {
   inactive?: string;
 }
 
+export interface MessageStepConfig extends BaseStepConfig {
+  type: 'message';
+}
+
 export type StepConfig =
   | TextStepConfig
   | SelectStepConfig
@@ -122,7 +142,8 @@ export type StepConfig =
   | SearchStepConfig
   | EditorStepConfig
   | PathStepConfig
-  | ToggleStepConfig;
+  | ToggleStepConfig
+  | MessageStepConfig;
 
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
@@ -217,7 +238,8 @@ export interface WizardRenderer {
   renderEditor(step: EditorStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
   renderPath(step: PathStepConfig, state: WizardState, theme: ResolvedTheme): Promise<string>;
   renderToggle(step: ToggleStepConfig, state: WizardState, theme: ResolvedTheme): Promise<boolean>;
-  renderStepHeader(stepIndex: number, totalVisible: number, message: string, theme: ResolvedTheme): void;
+  renderMessage(step: MessageStepConfig, state: WizardState, theme: ResolvedTheme): void;
+  renderStepHeader(stepIndex: number, totalVisible: number, message: string, theme: ResolvedTheme, description?: string): void;
   renderGroupHeader(group: string, theme: ResolvedTheme): void;
   renderSummary(answers: Record<string, unknown>, steps: StepConfig[], theme: ResolvedTheme): void;
   clear(): void;

@@ -141,7 +141,8 @@
           { "$ref": "#/definitions/searchStep" },
           { "$ref": "#/definitions/editorStep" },
           { "$ref": "#/definitions/pathStep" },
-          { "$ref": "#/definitions/toggleStep" }
+          { "$ref": "#/definitions/toggleStep" },
+          { "$ref": "#/definitions/messageStep" }
         ]
       }
     },
@@ -203,6 +204,10 @@
           "type": "string",
           "description": "Question or prompt message for the user"
         },
+        "description": {
+          "type": "string",
+          "description": "Help text displayed below the prompt"
+        },
         "next": {
           "type": "string",
           "description": "ID of the next step to navigate to (or '__done__' to finish)"
@@ -238,6 +243,7 @@
               "const": "text"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -275,6 +281,7 @@
               "const": "select"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -285,7 +292,7 @@
               "minItems": 1,
               "description": "Array of selectable options",
               "items": {
-                "$ref": "#/definitions/selectOption"
+                "$ref": "#/definitions/selectChoice"
               }
             },
             "default": {
@@ -298,6 +305,15 @@
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "pageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of options visible before scrolling"
+            },
+            "loop": {
+              "type": "boolean",
+              "description": "Whether to loop back to start when reaching end of list"
             }
           }
         }
@@ -316,6 +332,7 @@
               "const": "multiselect"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -326,7 +343,7 @@
               "minItems": 1,
               "description": "Array of selectable options",
               "items": {
-                "$ref": "#/definitions/selectOption"
+                "$ref": "#/definitions/selectChoice"
               }
             },
             "default": {
@@ -345,6 +362,15 @@
               "type": "integer",
               "minimum": 1,
               "description": "Maximum number of selections allowed"
+            },
+            "pageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of options visible before scrolling"
+            },
+            "loop": {
+              "type": "boolean",
+              "description": "Whether to loop back to start when reaching end of list"
             }
           }
         }
@@ -363,6 +389,7 @@
               "const": "confirm"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -389,6 +416,7 @@
               "const": "password"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -418,6 +446,7 @@
               "const": "number"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -457,6 +486,7 @@
               "const": "search"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -467,7 +497,7 @@
               "minItems": 1,
               "description": "Array of searchable options",
               "items": {
-                "$ref": "#/definitions/selectOption"
+                "$ref": "#/definitions/selectChoice"
               }
             },
             "default": {
@@ -477,6 +507,15 @@
             "placeholder": {
               "type": "string",
               "description": "Placeholder text for search input"
+            },
+            "pageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of options visible before scrolling"
+            },
+            "loop": {
+              "type": "boolean",
+              "description": "Whether to loop back to start when reaching end of list"
             }
           }
         }
@@ -495,6 +534,7 @@
               "const": "editor"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -528,6 +568,7 @@
               "const": "path"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -565,6 +606,7 @@
               "const": "toggle"
             },
             "message": true,
+            "description": true,
             "next": true,
             "when": true,
             "keepValuesOnPrevious": true,
@@ -582,6 +624,29 @@
               "type": "string",
               "description": "Label for inactive/off state"
             }
+          }
+        }
+      ]
+    },
+    "messageStep": {
+      "allOf": [
+        { "$ref": "#/definitions/baseStep" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "type": {
+              "const": "message"
+            },
+            "message": true,
+            "description": true,
+            "next": true,
+            "when": true,
+            "keepValuesOnPrevious": true,
+            "required": true,
+            "group": true
           }
         }
       ]
@@ -604,10 +669,29 @@
           "description": "Optional hint text displayed below the label"
         },
         "disabled": {
-          "type": "boolean",
-          "description": "Whether this option is disabled"
+          "oneOf": [
+            { "type": "boolean" },
+            { "type": "string", "description": "Reason why this option is disabled" }
+          ]
         }
       }
+    },
+    "separatorOption": {
+      "type": "object",
+      "required": ["separator"],
+      "additionalProperties": false,
+      "properties": {
+        "separator": {
+          "type": "string",
+          "description": "Visual separator label"
+        }
+      }
+    },
+    "selectChoice": {
+      "oneOf": [
+        { "$ref": "#/definitions/selectOption" },
+        { "$ref": "#/definitions/separatorOption" }
+      ]
     },
     "validationRule": {
       "oneOf": [

@@ -6,3 +6,4 @@ coverage/
 .env
 .env.local
 pnpm-lock.yaml
+.sisyphus/

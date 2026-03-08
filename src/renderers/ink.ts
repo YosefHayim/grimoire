@@ -28,7 +28,12 @@ import type {
   WizardState,
 } from '../types';
 
-export class InquirerRenderer implements WizardRenderer {
+function boxLine(text: string, theme: ResolvedTheme): string {
+  const line = '\u2500'.repeat(Math.max(0, 40 - text.length));
+  return `${theme.accent('\u250C\u2500')} ${theme.bold(text)} ${theme.accent(`${line}\u2510`)}`;
+}
+
+export class InkRenderer implements WizardRenderer {
   renderStepHeader(
     stepIndex: number,
     totalVisible: number,
@@ -36,16 +41,23 @@ export class InquirerRenderer implements WizardRenderer {
     theme: ResolvedTheme,
     description?: string,
   ): void {
-    const barWidth = 20;
-    const filledCount = totalVisible > 0 ? Math.round((stepIndex / totalVisible) * barWidth) : 0;
+    const barWidth = 30;
+    const progress = totalVisible > 0 ? stepIndex / totalVisible : 0;
+    const filledCount = Math.round(progress * barWidth);
     const remainingCount = barWidth - filledCount;
-    const filledBar = theme.success('\u2588'.repeat(filledCount));
+
+    const filledBar = theme.success('\u2593'.repeat(filledCount));
     const remainingBar = theme.muted('\u2591'.repeat(remainingCount));
+    const pct = `${String(Math.round(progress * 100))}%`;
     const counter = theme.muted(`Step ${String(stepIndex + 1)}/${String(totalVisible)}`);
-    const stepMessage = theme.muted(`\u2014 ${message}`);
-    console.log(`\n  [${filledBar}${remainingBar}]  ${counter} ${stepMessage}`);
+
+    console.log();
+    console.log(`  ${theme.accent('\u250C')} ${counter} ${theme.muted(pct)}`);
+    console.log(`  ${theme.accent('\u2502')} [${filledBar}${remainingBar}]`);
+    console.log(`  ${theme.accent('\u2514\u2500')} ${theme.primary(message)}`);
+
     if (description) {
-      console.log(`  ${theme.muted(description)}`);
+      console.log(`     ${theme.muted(description)}`);
     }
   }
 
@@ -184,11 +196,11 @@ export class InquirerRenderer implements WizardRenderer {
   ): Promise<string> {
     return search({
       message: step.message,
-      source: (input) => {
-        const term = (input ?? '').toLowerCase();
+      source: (term) => {
+        const query = (term ?? '').toLowerCase();
         return step.options
           .filter((opt): opt is SelectOption => 'value' in opt)
-          .filter((opt) => !opt.disabled && opt.label.toLowerCase().includes(term))
+          .filter((opt) => !opt.disabled && opt.label.toLowerCase().includes(query))
           .map((opt) => ({
             name: opt.label,
             value: opt.value,
@@ -263,7 +275,9 @@ export class InquirerRenderer implements WizardRenderer {
   }
 
   renderGroupHeader(group: string, theme: ResolvedTheme): void {
-    console.log(`\n  ${theme.accent('\u2500\u2500')} ${theme.bold(group)} ${theme.accent('\u2500\u2500')}\n`);
+    console.log();
+    console.log(`  ${boxLine(group, theme)}`);
+    console.log();
   }
 
   renderSummary(
@@ -271,8 +285,11 @@ export class InquirerRenderer implements WizardRenderer {
     steps: StepConfig[],
     theme: ResolvedTheme,
   ): void {
-    console.log(`\n${theme.muted('\u2500'.repeat(40))}`);
-    console.log(`  ${theme.bold('Summary')}\n`);
+    const divider = theme.accent('\u2500'.repeat(50));
+    console.log();
+    console.log(`  ${divider}`);
+    console.log(`  ${theme.accent('\u2502')} ${theme.bold('Summary')}`);
+    console.log(`  ${divider}`);
 
     for (const step of steps) {
       const answer = answers[step.id];
@@ -282,12 +299,12 @@ export class InquirerRenderer implements WizardRenderer {
         ? answer.map(String).join(', ')
         : String(answer);
 
-      console.log(
-        `  ${theme.muted(step.id.padEnd(20))} ${theme.primary(display)}`,
-      );
+      const label = theme.muted(step.id.padEnd(24));
+      const value = theme.primary(display);
+      console.log(`  ${theme.accent('\u2502')} ${label} ${value}`);
     }
 
-    console.log(theme.muted('\u2500'.repeat(40)));
+    console.log(`  ${divider}`);
   }
 
   clear(): void {

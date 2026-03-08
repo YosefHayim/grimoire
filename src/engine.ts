@@ -26,6 +26,10 @@ export function validateStepAnswer(
   step: StepConfig,
   value: unknown,
 ): string | null {
+  if (step.type === 'message') {
+    return null;
+  }
+
   const isRequired = step.required !== false;
 
   if (isRequired) {

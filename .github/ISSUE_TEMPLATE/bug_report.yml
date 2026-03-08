@@ -1,0 +1,88 @@
+name: Bug Report
+description: Report a bug in grimoire
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug. Please fill out the information below to help us investigate.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of what the bug is.
+      placeholder: When I run `grimoire run my-config.yaml`, it crashes with...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      value: |
+        1. Create a config file with...
+        2. Run `grimoire run ...`
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Config File
+      description: The wizard config file (YAML/JSON) that triggers the bug.
+      render: yaml
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error Output
+      description: Full error message or stack trace.
+      render: shell
+
+  - type: dropdown
+    id: node-version
+    attributes:
+      label: Node.js Version
+      options:
+        - "18"
+        - "20"
+        - "22"
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: grimoire-version
+    attributes:
+      label: Grimoire Version
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or information.

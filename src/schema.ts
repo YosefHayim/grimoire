@@ -48,12 +48,19 @@ const selectOptionSchema = z.object({
   value: z.string(),
   label: z.string(),
   hint: z.string().optional(),
-  disabled: z.boolean().optional(),
+  disabled: z.union([z.boolean(), z.string()]).optional(),
 });
+
+const separatorOptionSchema = z.object({
+  separator: z.string(),
+});
+
+const selectChoiceSchema = z.union([selectOptionSchema, separatorOptionSchema]);
 
 const baseStepFields = {
   id: z.string(),
   message: z.string(),
+  description: z.string().optional(),
   next: z.string().optional(),
   when: conditionSchema.optional(),
   keepValuesOnPrevious: z.boolean().optional(),
@@ -72,18 +79,24 @@ const textStepSchema = z.object({
 const selectStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('select'),
-  options: z.array(selectOptionSchema).min(1),
+  options: z.array(selectChoiceSchema).min(1).optional(),
+  optionsFrom: z.string().optional(),
   default: z.string().optional(),
   routes: z.record(z.string(), z.string()).optional(),
+  pageSize: z.number().int().positive().optional(),
+  loop: z.boolean().optional(),
 });
 
 const multiSelectStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('multiselect'),
-  options: z.array(selectOptionSchema).min(1),
+  options: z.array(selectChoiceSchema).min(1).optional(),
+  optionsFrom: z.string().optional(),
   default: z.array(z.string()).optional(),
   min: z.number().int().nonnegative().optional(),
   max: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  loop: z.boolean().optional(),
 });
 
 const confirmStepSchema = z.object({
@@ -110,9 +123,12 @@ const numberStepSchema = z.object({
 const searchStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('search'),
-  options: z.array(selectOptionSchema).min(1),
+  options: z.array(selectChoiceSchema).min(1).optional(),
+  optionsFrom: z.string().optional(),
   default: z.string().optional(),
   placeholder: z.string().optional(),
+  pageSize: z.number().int().positive().optional(),
+  loop: z.boolean().optional(),
 });
 
 const editorStepSchema = z.object({
@@ -138,6 +154,11 @@ const toggleStepSchema = z.object({
   inactive: z.string().optional(),
 });
 
+const messageStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('message'),
+});
+
 const stepConfigSchema = z.discriminatedUnion('type', [
   textStepSchema,
   selectStepSchema,
@@ -149,6 +170,7 @@ const stepConfigSchema = z.discriminatedUnion('type', [
   editorStepSchema,
   pathStepSchema,
   toggleStepSchema,
+  messageStepSchema,
 ]);
 
 const hexColorSchema = z.string().regex(
@@ -240,8 +262,13 @@ const wizardConfigSchema = z.object({
       collectConditionFieldIssues(step.when, stepIds, ctx, ['steps', i, 'when']);
     }
 
-    if (step.type === 'select' && step.routes) {
-      const optionValues = new Set(step.options.map(o => o.value));
+    if (step.type === 'select' && step.routes && step.options) {
+      const optionValues = new Set<string>();
+      for (const o of step.options) {
+        if ('value' in o) {
+          optionValues.add(o.value);
+        }
+      }
       for (const routeKey of Object.keys(step.routes)) {
         if (!optionValues.has(routeKey)) {
           ctx.addIssue({
@@ -250,6 +277,25 @@ const wizardConfigSchema = z.object({
             path: ['steps', i, 'routes', routeKey],
           });
         }
+      }
+    }
+
+    if (step.type === 'select' || step.type === 'multiselect' || step.type === 'search') {
+      const hasOptions = step.options !== undefined;
+      const hasOptionsFrom = step.optionsFrom !== undefined;
+      if (hasOptions && hasOptionsFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Step "${step.id}" has both "options" and "optionsFrom" — only one is allowed`,
+          path: ['steps', i],
+        });
+      }
+      if (!hasOptions && !hasOptionsFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Step "${step.id}" must have either "options" or "optionsFrom"`,
+          path: ['steps', i],
+        });
       }
     }
 
@@ -311,6 +357,9 @@ export {
   conditionSchema,
   validationRuleSchema,
   selectOptionSchema,
+  separatorOptionSchema,
+  selectChoiceSchema,
+  messageStepSchema,
   stepConfigSchema,
   themeConfigSchema,
   preFlightCheckSchema,
@@ -318,6 +367,8 @@ export {
 };
 
 export function parseWizardConfig(raw: unknown): WizardConfig {
-  const result: WizardConfig = wizardConfigSchema.parse(raw);
+  // The zod schema allows options to be optional (when optionsFrom is used).
+  // After resolution in loadWizardConfig, options is always populated.
+  const result = wizardConfigSchema.parse(raw) as WizardConfig;
   return result;
 }

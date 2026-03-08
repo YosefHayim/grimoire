@@ -1,4 +1,5 @@
 import { cosmiconfig } from 'cosmiconfig';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve, isAbsolute } from 'node:path';
 import { parse as parseYAML } from 'yaml';
 import { parseWizardConfig } from './schema';
@@ -105,6 +106,64 @@ function mergeConfigs(parent: WizardConfig, child: WizardConfig): WizardConfig {
   };
 }
 
+const OPTION_STEP_TYPES = new Set(['select', 'multiselect', 'search']);
+
+function resolveOptionsFromSteps(raw: Record<string, unknown>, configDir: string): void {
+  const steps = raw['steps'];
+  if (!Array.isArray(steps)) return;
+
+  for (const step of steps) {
+    if (typeof step !== 'object' || step === null) continue;
+    const stepObj = step as Record<string, unknown>;
+    const optionsFrom = stepObj['optionsFrom'];
+    if (typeof optionsFrom !== 'string') continue;
+
+    const stepId = String(stepObj['id'] ?? 'unknown');
+    const stepType = String(stepObj['type'] ?? 'unknown');
+
+    if (!OPTION_STEP_TYPES.has(stepType)) {
+      throw new Error(
+        `Step "${stepId}" has "optionsFrom" but type "${stepType}" does not support dynamic options`,
+      );
+    }
+
+    const fullPath = isAbsolute(optionsFrom)
+      ? optionsFrom
+      : resolve(configDir, optionsFrom);
+
+    let content: string;
+    try {
+      content = readFileSync(fullPath, 'utf-8');
+    } catch {
+      throw new Error(
+        `Step "${stepId}": failed to read optionsFrom file "${fullPath}"`,
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      if (fullPath.endsWith('.yaml') || fullPath.endsWith('.yml')) {
+        parsed = parseYAML(content);
+      } else {
+        parsed = JSON.parse(content);
+      }
+    } catch {
+      throw new Error(
+        `Step "${stepId}": optionsFrom file "${fullPath}" contains invalid JSON/YAML`,
+      );
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(
+        `Step "${stepId}": optionsFrom file "${fullPath}" must contain an array`,
+      );
+    }
+
+    stepObj['options'] = parsed;
+    delete stepObj['optionsFrom'];
+  }
+}
+
 async function loadWithInheritance(
   filePath: string,
   seen: Set<string>,
@@ -126,6 +185,7 @@ async function loadWithInheritance(
   const raw = result.config as Record<string, unknown>;
   const extendsPath = typeof raw['extends'] === 'string' ? raw['extends'] : undefined;
 
+  resolveOptionsFromSteps(raw, dirname(resolvedPath));
   const config = parseWizardConfig(raw);
 
   if (!extendsPath) {
@@ -149,16 +209,23 @@ export async function loadWizardConfig(filePath: string): Promise<WizardConfig> 
 export function parseWizardYAML(yamlString: string): WizardConfig {
   const raw: unknown = parseYAML(yamlString);
 
-  if (
-    raw !== null &&
-    typeof raw === 'object' &&
-    !Array.isArray(raw) &&
-    'extends' in raw &&
-    typeof raw.extends === 'string'
-  ) {
-    throw new Error(
-      '"extends" is not supported in parseWizardYAML — use loadWizardConfig with a file path',
-    );
+  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+    if ('extends' in raw && typeof raw.extends === 'string') {
+      throw new Error(
+        '"extends" is not supported in parseWizardYAML — use loadWizardConfig with a file path',
+      );
+    }
+
+    const steps = (raw as Record<string, unknown>)['steps'];
+    if (Array.isArray(steps)) {
+      for (const step of steps) {
+        if (typeof step === 'object' && step !== null && 'optionsFrom' in step) {
+          throw new Error(
+            '"optionsFrom" is not supported in parseWizardYAML — use loadWizardConfig with a file path',
+          );
+        }
+      }
+    }
   }
 
   const config = parseWizardConfig(raw);

@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { parseWizardYAML } from '../parser';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { parseWizardYAML, loadWizardConfig } from '../parser';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 describe('parseWizardYAML', () => {
   it('parses valid YAML string and returns WizardConfig', () => {
@@ -58,5 +61,67 @@ steps:
     message: Hi
 `;
     expect(() => parseWizardYAML(yaml)).toThrow(/extends.*not supported/);
+  });
+});
+
+describe('loadWizardConfig — optionsFrom', () => {
+  let tempDir: string;
+
+  beforeAll(() => {
+    tempDir = join(tmpdir(), `grimoire-parser-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterAll(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('resolves optionsFrom from a JSON file', async () => {
+    writeFileSync(
+      join(tempDir, 'opts.json'),
+      JSON.stringify([{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]),
+    );
+    writeFileSync(
+      join(tempDir, 'json-opts.yaml'),
+      'meta:\n  name: JSON Options\nsteps:\n  - id: pick\n    type: select\n    message: Pick one\n    optionsFrom: ./opts.json\n',
+    );
+
+    const config = await loadWizardConfig(join(tempDir, 'json-opts.yaml'));
+    const step = config.steps[0];
+    expect(step?.type).toBe('select');
+    if (step?.type === 'select') {
+      expect(step.options).toHaveLength(2);
+      expect(step.options[0]).toEqual({ value: 'a', label: 'A' });
+    }
+  });
+
+  it('resolves optionsFrom from a YAML file', async () => {
+    writeFileSync(
+      join(tempDir, 'opts.yaml'),
+      '- value: x\n  label: X\n- value: "y"\n  label: "Y"\n',
+    );
+    writeFileSync(
+      join(tempDir, 'yaml-opts.yaml'),
+      'meta:\n  name: YAML Options\nsteps:\n  - id: pick\n    type: select\n    message: Pick one\n    optionsFrom: ./opts.yaml\n',
+    );
+
+    const config = await loadWizardConfig(join(tempDir, 'yaml-opts.yaml'));
+    const step = config.steps[0];
+    expect(step?.type).toBe('select');
+    if (step?.type === 'select') {
+      expect(step.options).toHaveLength(2);
+      expect(step.options[0]).toEqual({ value: 'x', label: 'X' });
+    }
+  });
+
+  it('throws when optionsFrom points to nonexistent file', async () => {
+    writeFileSync(
+      join(tempDir, 'missing-opts.yaml'),
+      'meta:\n  name: Missing\nsteps:\n  - id: pick\n    type: select\n    message: Pick\n    optionsFrom: ./nonexistent.json\n',
+    );
+
+    await expect(loadWizardConfig(join(tempDir, 'missing-opts.yaml'))).rejects.toThrow(
+      /failed to read optionsFrom/,
+    );
   });
 });

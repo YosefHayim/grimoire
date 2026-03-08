@@ -1,17 +1,32 @@
 #!/usr/bin/env node
 
+import chalk from 'chalk';
 import { program } from 'commander';
 import { loadWizardConfig } from './parser';
 import { runWizard } from './runner';
 import { getVisibleSteps } from './engine';
 import { resolveTheme } from './theme';
+import { resolveTemplate } from './template';
 import { scaffoldWizard } from './scaffolder';
 import { bashCompletion, zshCompletion, fishCompletion } from './completions';
+import { clearCache } from './cache';
+import { listTemplates, deleteTemplate, loadTemplate } from './templates';
+import { InkRenderer } from './renderers/ink';
+import type { WizardRenderer } from './types';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify as yamlStringify } from 'yaml';
 import type { Condition, WizardConfig } from './types';
+
+let plainMode = false;
+
+function applyColorMode(opts: { color?: boolean; plain?: boolean }): void {
+  if (opts.plain || opts.color === false || process.env['NO_COLOR'] !== undefined) {
+    chalk.level = 0;
+    plainMode = true;
+  }
+}
 
 interface RunCommandOpts {
   output?: string;
@@ -20,12 +35,21 @@ interface RunCommandOpts {
   dryRun?: boolean;
   mock?: string;
   json?: boolean;
+  cache?: boolean;
+  renderer?: string;
+  template?: string;
 }
 
 program
   .name('grimoire')
   .description('Config-driven CLI wizard framework')
-  .version('0.2.0');
+  .version('0.3.0')
+  .option('--no-color', 'Disable colored output')
+  .option('--plain', 'Plain output mode (no colors, no banner)')
+  .hook('preAction', () => {
+    const globalOpts = program.opts<{ color?: boolean; plain?: boolean }>();
+    applyColorMode(globalOpts);
+  });
 
 program
   .command('run')
@@ -37,6 +61,9 @@ program
   .option('--dry-run', 'Show step plan without running the wizard')
   .option('--mock <json>', 'Run wizard with preset answers (JSON string)')
   .option('--json', 'Output structured JSON result to stdout')
+  .option('--no-cache', 'Disable answer caching for this run')
+  .option('--renderer <type>', 'Renderer to use: inquirer (default) or ink', 'inquirer')
+  .option('--template <name>', 'Load a saved template as defaults')
   .action(async (configPath: string, opts: RunCommandOpts) => {
     try {
       const fullPath = resolve(configPath);
@@ -49,11 +76,28 @@ program
 
       const mockAnswers = parseMockAnswers(opts.mock);
       const isJsonOutput = opts.json === true;
+      const renderer = resolveRenderer(opts.renderer);
+
+      let templateAnswers: Record<string, unknown> | undefined;
+      if (opts.template) {
+        templateAnswers = loadTemplate(config.meta.name, opts.template);
+        if (!templateAnswers) {
+          console.error(`\n  Template "${opts.template}" not found for "${config.meta.name}".\n`);
+          process.exit(1);
+        }
+      }
 
       const answers = await runWizard(config, {
+        renderer,
         quiet: opts.quiet ?? isJsonOutput,
+        plain: plainMode,
         mockAnswers,
+        templateAnswers,
+        cache: opts.cache,
       });
+
+      const rawOutputPath = opts.output ?? config.output?.path;
+      const outputPath = rawOutputPath ? resolve(resolveTemplate(rawOutputPath, answers)) : undefined;
 
       if (isJsonOutput) {
         const stepsCompleted = Object.keys(answers).length;
@@ -66,16 +110,14 @@ program
         };
         const jsonStr = JSON.stringify(result, null, 2);
         console.log(jsonStr);
-        if (opts.output) {
-          const outputPath = resolve(opts.output);
+        if (outputPath) {
           writeFileSync(outputPath, jsonStr + '\n', 'utf-8');
         }
         return;
       }
 
-      if (opts.output) {
+      if (outputPath) {
         const format = opts.format ?? config.output?.format ?? 'json';
-        const outputPath = resolve(opts.output);
         const content = formatOutput(answers, format);
         writeFileSync(outputPath, content, 'utf-8');
         if (!opts.quiet) {
@@ -173,6 +215,54 @@ program
         console.error(`Unknown shell: ${shell}. Supported: bash, zsh, fish`);
         process.exit(1);
     }
+  });
+
+const cacheCommand = program
+  .command('cache')
+  .description('Manage cached wizard answers');
+
+cacheCommand
+  .command('clear')
+  .description('Delete cached wizard answers')
+  .argument('[name]', 'Wizard name to clear (clears all if omitted)')
+  .action((name?: string) => {
+    clearCache(name);
+    if (name) {
+      console.log(`\n  Cache cleared for "${name}".\n`);
+    } else {
+      console.log('\n  All cached answers cleared.\n');
+    }
+  });
+
+const templateCommand = program
+  .command('template')
+  .description('Manage saved wizard answer templates');
+
+templateCommand
+  .command('list')
+  .description('List saved templates for a wizard')
+  .argument('<wizard-name>', 'Wizard name')
+  .action((wizardName: string) => {
+    const templates = listTemplates(wizardName);
+    if (templates.length === 0) {
+      console.log(`\n  No templates found for "${wizardName}".\n`);
+      return;
+    }
+    console.log(`\n  Templates for "${wizardName}":\n`);
+    for (const t of templates) {
+      console.log(`    - ${t}`);
+    }
+    console.log();
+  });
+
+templateCommand
+  .command('delete')
+  .description('Delete a saved template')
+  .argument('<wizard-name>', 'Wizard name')
+  .argument('<template-name>', 'Template name')
+  .action((wizardName: string, templateName: string) => {
+    deleteTemplate(wizardName, templateName);
+    console.log(`\n  Template "${templateName}" deleted from "${wizardName}".\n`);
   });
 
 program.parse();
@@ -312,6 +402,16 @@ function formatCondition(condition: Condition): string {
     return `${condition.field} isNotEmpty`;
   }
   return 'unknown';
+}
+
+function resolveRenderer(rendererName?: string): WizardRenderer | undefined {
+  if (!rendererName || rendererName === 'inquirer') {
+    return undefined;
+  }
+  if (rendererName === 'ink') {
+    return new InkRenderer();
+  }
+  throw new Error(`Unknown renderer: "${rendererName}". Supported: inquirer, ink`);
 }
 
 function toEnvKey(key: string): string {

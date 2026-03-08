@@ -4,19 +4,28 @@ import { resolveTheme } from './theme';
 import { InquirerRenderer } from './renderers/inquirer';
 import { resolveEnvDefault, resolveEnvDefaultBoolean, resolveEnvDefaultNumber } from './resolve';
 import { resolveTemplate } from './template';
+import { renderBanner } from './banner';
 import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
 import { evaluateCondition } from './conditions';
-import type { ActionConfig, PreFlightCheck, StepConfig, WizardConfig, WizardRenderer, WizardState, ResolvedTheme } from './types';
+import { loadCachedAnswers, saveCachedAnswers } from './cache';
+import { recordSelection, getOrderedOptions } from './mru';
+import type { ActionConfig, PreFlightCheck, SelectChoice, StepConfig, WizardConfig, WizardRenderer, WizardState, ResolvedTheme } from './types';
 
 export interface RunWizardOptions {
   renderer?: WizardRenderer;
   quiet?: boolean;
+  plain?: boolean;
   mockAnswers?: Record<string, unknown>;
+  templateAnswers?: Record<string, unknown>;
+  onBeforeStep?: (stepId: string, step: StepConfig, state: WizardState) => Promise<void> | void;
+  onAfterStep?: (stepId: string, value: unknown, state: WizardState) => Promise<void> | void;
   onStepComplete?: (stepId: string, value: unknown, state: WizardState) => void;
   onCancel?: (state: WizardState) => void;
   plugins?: GrimoirePlugin[];
   asyncValidate?: (stepId: string, value: unknown, answers: Record<string, unknown>) => Promise<string | null>;
+  cache?: boolean | { dir?: string };
+  mru?: boolean;
 }
 
 export function runPreFlightChecks(
@@ -41,6 +50,10 @@ function getMockValue(
 ): unknown {
   if (step.id in mockAnswers) {
     return mockAnswers[step.id];
+  }
+
+  if (step.type === 'message') {
+    return true;
   }
 
   const defaultValue = getStepDefault(step);
@@ -69,6 +82,7 @@ function getStepDefault(step: StepConfig): unknown {
     case 'multiselect':
       return step.default;
     case 'password':
+    case 'message':
       return undefined;
   }
 }
@@ -82,7 +96,14 @@ export async function runWizard(
   const mockAnswers = options?.mockAnswers;
   const isMock = mockAnswers !== undefined;
   const quiet = options?.quiet ?? isMock;
+  const cacheEnabled = !isMock && options?.cache !== false;
+  const cacheDir = typeof options?.cache === 'object' ? options.cache.dir : undefined;
+  const mruEnabled = !isMock && options?.mru !== false;
   let state = createWizardState(config);
+
+  const cachedAnswers = cacheEnabled
+    ? loadCachedAnswers(config.meta.name, cacheDir)
+    : undefined;
 
   const userPlugins = options?.plugins;
   if (userPlugins) {
@@ -97,7 +118,7 @@ export async function runWizard(
     }
 
     if (!quiet) {
-      printWizardHeader(config, theme);
+      printWizardHeader(config, theme, options?.plain);
     }
 
     let previousGroup: string | undefined;
@@ -112,27 +133,38 @@ export async function runWizard(
 
       if (!isMock) {
         if (currentStep.group !== undefined && currentStep.group !== previousGroup) {
-          renderer.renderGroupHeader(currentStep.group, theme);
+          const resolvedGroup = resolveTemplate(currentStep.group, state.answers);
+          renderer.renderGroupHeader(resolvedGroup, theme);
         }
         previousGroup = currentStep.group;
 
         const stepIndex = visibleSteps.findIndex((s) => s.id === state.currentStepId);
         const resolvedMessage = resolveTemplate(currentStep.message, state.answers);
-        renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme);
+        const resolvedDescription = currentStep.description ? resolveTemplate(currentStep.description, state.answers) : undefined;
+        renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme, resolvedDescription);
+      }
+
+      if (options?.onBeforeStep) {
+        await options.onBeforeStep(currentStep.id, currentStep, state);
       }
 
       const pluginStep = getPluginStep(currentStep.type);
-      const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep);
+      const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep, cachedAnswers);
+      const withTemplate = options?.templateAnswers
+        ? applyTemplateDefaults(resolvedStep, options.templateAnswers)
+        : resolvedStep;
+      const templatedStep = resolveStepTemplates(withTemplate, state.answers);
+      const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
 
       try {
         const value = isMock
-          ? getMockValue(resolvedStep, mockAnswers)
+          ? getMockValue(mruStep, mockAnswers)
           : pluginStep
-            ? await pluginStep.render(toStepRecord(resolvedStep), state, theme)
-            : await renderStep(renderer, resolvedStep, state, theme);
+            ? await pluginStep.render(toStepRecord(mruStep), state, theme)
+            : await renderStep(renderer, mruStep, state, theme);
 
         if (pluginStep?.validate) {
-          const pluginError = pluginStep.validate(value, toStepRecord(resolvedStep));
+          const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
           if (pluginError) {
             if (isMock) {
               throw new Error(
@@ -147,12 +179,13 @@ export async function runWizard(
         const nextState = wizardReducer(state, { type: 'NEXT', value }, config);
 
         if (nextState.errors[currentStep.id]) {
+          const errorMsg = resolveTemplate(nextState.errors[currentStep.id] ?? '', state.answers);
           if (isMock) {
             throw new Error(
-              `Mock mode: validation failed for step "${currentStep.id}": ${nextState.errors[currentStep.id] ?? 'unknown error'}`,
+              `Mock mode: validation failed for step "${currentStep.id}": ${errorMsg}`,
             );
           }
-          console.log(theme.error(`\n  ${nextState.errors[currentStep.id]}\n`));
+          console.log(theme.error(`\n  ${errorMsg}\n`));
           state = { ...nextState, errors: {} };
           continue;
         }
@@ -166,7 +199,16 @@ export async function runWizard(
           }
         }
 
+        if (options?.onAfterStep) {
+          await options.onAfterStep(currentStep.id, value, nextState);
+        }
+
         state = nextState;
+
+        if (mruEnabled && isSelectLikeStep(currentStep.type)) {
+          recordSelection(config.meta.name, currentStep.id, value as string | string[]);
+        }
+
         options?.onStepComplete?.(currentStep.id, value, state);
       } catch (error: unknown) {
         if (!isMock && isUserCancel(error)) {
@@ -187,6 +229,19 @@ export async function runWizard(
 
     if (state.status === 'done' && config.actions && config.actions.length > 0 && !isMock) {
       await executeActions(config.actions, state.answers, theme);
+    }
+
+    if (state.status === 'done' && cacheEnabled) {
+      const passwordStepIds = new Set(
+        config.steps.filter((s) => s.type === 'password').map((s) => s.id),
+      );
+      const answersToCache: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(state.answers)) {
+        if (!passwordStepIds.has(key)) {
+          answersToCache[key] = value;
+        }
+      }
+      saveCachedAnswers(config.meta.name, answersToCache, cacheDir);
     }
 
     return state.answers;
@@ -232,36 +287,179 @@ function renderStep(
       return renderer.renderPath(step, state, theme);
     case 'toggle':
       return renderer.renderToggle(step, state, theme);
+    case 'message':
+      renderer.renderMessage(step, state, theme);
+      return Promise.resolve(true);
   }
 }
 
-function resolveStepDefaults(step: StepConfig): StepConfig {
+function resolveStepDefaults(
+  step: StepConfig,
+  cachedAnswers?: Record<string, unknown>,
+): StepConfig {
   switch (step.type) {
-    case 'text':
-      return { ...step, default: resolveEnvDefault(step.default) };
-    case 'search':
-      return { ...step, default: resolveEnvDefault(step.default) };
-    case 'editor':
-      return { ...step, default: resolveEnvDefault(step.default) };
-    case 'path':
-      return { ...step, default: resolveEnvDefault(step.default) };
-    case 'select':
-      return { ...step, default: resolveEnvDefault(step.default) };
+    case 'text': {
+      const envResolved = resolveEnvDefault(step.default);
+      const fallback = envResolved ?? getCachedDefault<string>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
+    case 'search': {
+      const envResolved = resolveEnvDefault(step.default);
+      const fallback = envResolved ?? getCachedDefault<string>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
+    case 'editor': {
+      const envResolved = resolveEnvDefault(step.default);
+      const fallback = envResolved ?? getCachedDefault<string>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
+    case 'path': {
+      const envResolved = resolveEnvDefault(step.default);
+      const fallback = envResolved ?? getCachedDefault<string>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
+    case 'select': {
+      const envResolved = resolveEnvDefault(step.default);
+      const fallback = envResolved ?? getCachedDefault<string>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
     case 'number': {
       const resolved = resolveEnvDefaultNumber(step.default);
-      return { ...step, default: resolved };
+      const fallback = resolved ?? getCachedDefault<number>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
     }
     case 'confirm': {
       const resolved = resolveEnvDefaultBoolean(step.default);
-      return { ...step, default: resolved };
+      const fallback = resolved ?? getCachedDefault<boolean>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
     }
     case 'toggle': {
       const resolved = resolveEnvDefaultBoolean(step.default);
-      return { ...step, default: resolved };
+      const fallback = resolved ?? getCachedDefault<boolean>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
     }
-    case 'multiselect':
+    case 'multiselect': {
+      const fallback = step.default ?? getCachedDefault<string[]>(step.id, cachedAnswers);
+      return { ...step, default: fallback };
+    }
     case 'password':
+    case 'message':
       return step;
+  }
+}
+
+function getCachedDefault<T>(
+  stepId: string,
+  cachedAnswers?: Record<string, unknown>,
+): T | undefined {
+  if (!cachedAnswers || !(stepId in cachedAnswers)) return undefined;
+  return cachedAnswers[stepId] as T;
+}
+
+function applyTemplateDefaults(step: StepConfig, templateAnswers: Record<string, unknown>): StepConfig {
+  if (!(step.id in templateAnswers)) return step;
+  if (step.type === 'password' || step.type === 'message') return step;
+
+  const value = templateAnswers[step.id];
+
+  switch (step.type) {
+    case 'text':
+    case 'select':
+    case 'search':
+    case 'editor':
+    case 'path':
+      return { ...step, default: typeof value === 'string' ? value : step.default };
+    case 'number':
+      return { ...step, default: typeof value === 'number' ? value : step.default };
+    case 'confirm':
+    case 'toggle':
+      return { ...step, default: typeof value === 'boolean' ? value : step.default };
+    case 'multiselect':
+      return { ...step, default: Array.isArray(value) ? (value as string[]) : step.default };
+  }
+}
+
+function isSelectLikeStep(type: string): boolean {
+  return type === 'select' || type === 'multiselect' || type === 'search';
+}
+
+function applyMruOrdering(step: StepConfig, wizardName: string): StepConfig {
+  if (step.type === 'select') {
+    return { ...step, options: getOrderedOptions(wizardName, step.id, step.options) };
+  }
+  if (step.type === 'multiselect') {
+    return { ...step, options: getOrderedOptions(wizardName, step.id, step.options) };
+  }
+  if (step.type === 'search') {
+    return { ...step, options: getOrderedOptions(wizardName, step.id, step.options) };
+  }
+  return step;
+}
+
+function resolveChoiceTemplates(
+  options: SelectChoice[],
+  answers: Record<string, unknown>,
+): SelectChoice[] {
+  return options.map((opt) => {
+    if ('separator' in opt) return opt;
+    return {
+      ...opt,
+      label: resolveTemplate(opt.label, answers),
+      hint: opt.hint ? resolveTemplate(opt.hint, answers) : undefined,
+    };
+  });
+}
+
+function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>): StepConfig {
+  switch (step.type) {
+    case 'text':
+      return {
+        ...step,
+        placeholder: step.placeholder ? resolveTemplate(step.placeholder, answers) : undefined,
+        default: step.default ? resolveTemplate(step.default, answers) : undefined,
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'select':
+      return {
+        ...step,
+        options: resolveChoiceTemplates(step.options, answers),
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'multiselect':
+      return {
+        ...step,
+        options: resolveChoiceTemplates(step.options, answers),
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'search':
+      return {
+        ...step,
+        placeholder: step.placeholder ? resolveTemplate(step.placeholder, answers) : undefined,
+        options: resolveChoiceTemplates(step.options, answers),
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'path':
+      return {
+        ...step,
+        placeholder: step.placeholder ? resolveTemplate(step.placeholder, answers) : undefined,
+        default: step.default ? resolveTemplate(step.default, answers) : undefined,
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'editor':
+      return {
+        ...step,
+        default: step.default ? resolveTemplate(step.default, answers) : undefined,
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
+    case 'password':
+    case 'number':
+    case 'confirm':
+    case 'toggle':
+    case 'message':
+      return {
+        ...step,
+        description: step.description ? resolveTemplate(step.description, answers) : undefined,
+      };
   }
 }
 
@@ -278,7 +476,8 @@ async function executeActions(
     }
 
     const resolvedCommand = resolveTemplate(action.run, answers);
-    const label = action.name ?? resolvedCommand;
+    const resolvedName = action.name ? resolveTemplate(action.name, answers) : undefined;
+    const label = resolvedName ?? resolvedCommand;
 
     try {
       execSync(resolvedCommand, { stdio: 'pipe' });
@@ -291,9 +490,9 @@ async function executeActions(
   console.log();
 }
 
-function printWizardHeader(config: WizardConfig, theme: ResolvedTheme): void {
+function printWizardHeader(config: WizardConfig, theme: ResolvedTheme, plain?: boolean): void {
   console.log();
-  console.log(`  ${theme.bold(config.meta.name)}`);
+  console.log(renderBanner(config.meta.name, theme, { plain }));
   if (config.meta.description) {
     console.log(`  ${theme.muted(config.meta.description)}`);
   }

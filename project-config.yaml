@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "wizard": "Extended Project Wizard",
+  "answers": {
+    "name": "inherited-project",
+    "language": "python",
+    "description": "Testing extends",
+    "confirm": true
+  },
+  "stepsCompleted": 4,
+  "format": "json"
+}

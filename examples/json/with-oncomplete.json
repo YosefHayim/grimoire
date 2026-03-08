@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "name": "Project Setup with Handler",
+    "description": "Demonstrates onComplete handler file"
+  },
+  "theme": {
+    "preset": "dracula"
+  },
+  "onComplete": "../handlers/setup-project.ts",
+  "steps": [
+    {
+      "id": "project-name",
+      "type": "text",
+      "message": "Project name?",
+      "validate": [
+        { "rule": "required" }
+      ]
+    },
+    {
+      "id": "language",
+      "type": "select",
+      "message": "Language?",
+      "options": [
+        { "value": "typescript", "label": "TypeScript" },
+        { "value": "javascript", "label": "JavaScript" },
+        { "value": "python", "label": "Python" }
+      ]
+    },
+    {
+      "id": "confirm",
+      "type": "confirm",
+      "message": "Create project?",
+      "default": true
+    }
+  ],
+  "actions": [
+    {
+      "name": "Log completion",
+      "run": "echo 'Created {{project-name}} with {{language}}'"
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

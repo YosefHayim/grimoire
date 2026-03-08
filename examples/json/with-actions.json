@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "name": "Project Scaffolder",
+    "description": "Create a new project with post-wizard actions"
+  },
+  "theme": {
+    "preset": "catppuccin"
+  },
+  "steps": [
+    {
+      "id": "project-name",
+      "type": "text",
+      "message": "Project name?",
+      "validate": [
+        { "rule": "required" },
+        {
+          "rule": "pattern",
+          "value": "^[a-z0-9-]+$",
+          "message": "Only lowercase letters, numbers, and hyphens"
+        }
+      ]
+    },
+    {
+      "id": "use-git",
+      "type": "confirm",
+      "message": "Initialize git repository?",
+      "default": true
+    },
+    {
+      "id": "use-readme",
+      "type": "confirm",
+      "message": "Create a README?",
+      "default": true
+    }
+  ],
+  "actions": [
+    {
+      "name": "Create project directory",
+      "run": "mkdir -p {{project-name}}"
+    },
+    {
+      "name": "Initialize git",
+      "run": "git -C {{project-name}} init",
+      "when": {
+        "field": "use-git",
+        "equals": true
+      }
+    },
+    {
+      "name": "Create README",
+      "run": "echo '# {{project-name}}' > {{project-name}}/README.md",
+      "when": {
+        "field": "use-readme",
+        "equals": true
+      }
+    }
+  ],
+  "output": {
+    "format": "json"
+  }
+}

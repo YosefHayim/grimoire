@@ -190,7 +190,7 @@ export interface ActionConfig {
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
-  meta: { name: string; version?: string; description?: string };
+  meta: { name: string; version?: string; description?: string; review?: boolean };
   theme?: ThemeConfig;
   steps: StepConfig[];
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };

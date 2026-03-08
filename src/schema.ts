@@ -220,6 +220,7 @@ const wizardConfigSchema = z.object({
     name: z.string(),
     version: z.string().optional(),
     description: z.string().optional(),
+    review: z.boolean().optional(),
   }),
   theme: themeConfigSchema.optional(),
   steps: z.array(stepConfigSchema).min(1),

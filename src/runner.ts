@@ -153,124 +153,179 @@ export async function runWizard(
     const visibleStepsForCount = getVisibleSteps(config, state.answers);
     emitEvent(renderer, { type: 'session:start', wizard: config.meta.name, description: config.meta.description, totalSteps: visibleStepsForCount.length }, theme);
 
-    let previousGroup: string | undefined;
+    let needsReview = true;
 
-    while (state.status === 'running') {
-      const visibleSteps = getVisibleSteps(config, state.answers);
-      const currentStep = config.steps.find((s) => s.id === state.currentStepId);
+    while (needsReview) {
+      let previousGroup: string | undefined;
 
-      if (!currentStep) {
-        throw new Error(`Current step not found: "${state.currentStepId}"`);
-      }
+      while (state.status === 'running') {
+        const visibleSteps = getVisibleSteps(config, state.answers);
+        const currentStep = config.steps.find((s) => s.id === state.currentStepId);
 
-      if (currentStep.group !== undefined && currentStep.group !== previousGroup) {
-        const resolvedGroup = resolveTemplate(currentStep.group, state.answers);
-        if (!isMock) {
-          renderer.renderGroupHeader(resolvedGroup, theme);
+        if (!currentStep) {
+          throw new Error(`Current step not found: "${state.currentStepId}"`);
         }
-        emitEvent(renderer, { type: 'group:start', group: resolvedGroup }, theme);
-      }
-      previousGroup = currentStep.group;
 
-      const stepIndex = visibleSteps.findIndex((s) => s.id === state.currentStepId);
-      const resolvedMessage = resolveTemplate(currentStep.message, state.answers);
-      const resolvedDescription = currentStep.description ? resolveTemplate(currentStep.description, state.answers) : undefined;
+        if (currentStep.group !== undefined && currentStep.group !== previousGroup) {
+          const resolvedGroup = resolveTemplate(currentStep.group, state.answers);
+          if (!isMock) {
+            renderer.renderGroupHeader(resolvedGroup, theme);
+          }
+          emitEvent(renderer, { type: 'group:start', group: resolvedGroup }, theme);
+        }
+        previousGroup = currentStep.group;
 
-      if (!isMock) {
-        renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme, resolvedDescription);
-      }
+        const stepIndex = visibleSteps.findIndex((s) => s.id === state.currentStepId);
+        const resolvedMessage = resolveTemplate(currentStep.message, state.answers);
+        const resolvedDescription = currentStep.description ? resolveTemplate(currentStep.description, state.answers) : undefined;
 
-      emitEvent(renderer, { type: 'step:start', stepId: currentStep.id, stepIndex, totalVisible: visibleSteps.length, step: currentStep }, theme);
+        if (!isMock) {
+          renderer.renderStepHeader(stepIndex, visibleSteps.length, resolvedMessage, theme, resolvedDescription);
+        }
 
-      if (currentStep.type === 'note') {
-        emitEvent(renderer, { type: 'note', title: resolvedMessage, body: resolvedDescription ?? '' }, theme);
-      }
+        emitEvent(renderer, { type: 'step:start', stepId: currentStep.id, stepIndex, totalVisible: visibleSteps.length, step: currentStep }, theme);
 
-      if (options?.onBeforeStep) {
-        await options.onBeforeStep(currentStep.id, currentStep, state);
-      }
+        if (currentStep.type === 'note') {
+          emitEvent(renderer, { type: 'note', title: resolvedMessage, body: resolvedDescription ?? '' }, theme);
+        }
 
-      const pluginStep = getPluginStep(currentStep.type);
-      const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep, cachedAnswers);
-      const withTemplate = options?.templateAnswers
-        ? applyTemplateDefaults(resolvedStep, options.templateAnswers)
-        : resolvedStep;
-      const templatedStep = resolveStepTemplates(withTemplate, state.answers);
-      const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
+        if (options?.onBeforeStep) {
+          await options.onBeforeStep(currentStep.id, currentStep, state);
+        }
 
-      try {
-        const value = isMock
-          ? getMockValue(mruStep, mockAnswers)
-          : pluginStep
-            ? await pluginStep.render(toStepRecord(mruStep), state, theme)
-            : await renderStep(renderer, mruStep, state, theme);
+        const pluginStep = getPluginStep(currentStep.type);
+        const resolvedStep = pluginStep ? currentStep : resolveStepDefaults(currentStep, cachedAnswers);
+        const withTemplate = options?.templateAnswers
+          ? applyTemplateDefaults(resolvedStep, options.templateAnswers)
+          : resolvedStep;
+        const templatedStep = resolveStepTemplates(withTemplate, state.answers);
+        const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
 
-        if (pluginStep?.validate) {
-          const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
-          if (pluginError) {
+        try {
+          const value = isMock
+            ? getMockValue(mruStep, mockAnswers)
+            : pluginStep
+              ? await pluginStep.render(toStepRecord(mruStep), state, theme)
+              : await renderStep(renderer, mruStep, state, theme);
+
+          if (pluginStep?.validate) {
+            const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
+            if (pluginError) {
+              if (isMock) {
+                throw new Error(
+                  `Mock mode: validation failed for step "${currentStep.id}": ${pluginError}`,
+                );
+              }
+              console.log(theme.error(`\n  ${pluginError}\n`));
+              continue;
+            }
+          }
+
+          const nextState = wizardReducer(state, { type: 'NEXT', value }, config);
+
+          if (nextState.errors[currentStep.id]) {
+            const errorMsg = resolveTemplate(nextState.errors[currentStep.id] ?? '', state.answers);
+            emitEvent(renderer, { type: 'step:error', stepId: currentStep.id, error: errorMsg }, theme);
             if (isMock) {
               throw new Error(
-                `Mock mode: validation failed for step "${currentStep.id}": ${pluginError}`,
+                `Mock mode: validation failed for step "${currentStep.id}": ${errorMsg}`,
               );
             }
-            console.log(theme.error(`\n  ${pluginError}\n`));
-            continue;
-          }
-        }
-
-        const nextState = wizardReducer(state, { type: 'NEXT', value }, config);
-
-        if (nextState.errors[currentStep.id]) {
-          const errorMsg = resolveTemplate(nextState.errors[currentStep.id] ?? '', state.answers);
-          emitEvent(renderer, { type: 'step:error', stepId: currentStep.id, error: errorMsg }, theme);
-          if (isMock) {
-            throw new Error(
-              `Mock mode: validation failed for step "${currentStep.id}": ${errorMsg}`,
-            );
-          }
-          console.log(theme.error(`\n  ${errorMsg}\n`));
-          state = { ...nextState, errors: {} };
-          continue;
-        }
-
-        if (!isMock && options?.asyncValidate) {
-          const asyncError = await options.asyncValidate(currentStep.id, value, nextState.answers);
-          if (asyncError !== null) {
-            console.log(theme.error(`\n  ${asyncError}\n`));
+            console.log(theme.error(`\n  ${errorMsg}\n`));
             state = { ...nextState, errors: {} };
             continue;
           }
-        }
 
-        if (options?.onAfterStep) {
-          await options.onAfterStep(currentStep.id, value, nextState);
-        }
-
-        state = nextState;
-        emitEvent(renderer, { type: 'step:complete', stepId: currentStep.id, value, step: currentStep }, theme);
-
-        if (mruEnabled && isSelectLikeStep(currentStep.type)) {
-          recordSelection(config.meta.name, currentStep.id, value as string | string[]);
-        }
-
-        options?.onStepComplete?.(currentStep.id, value, state);
-      } catch (error: unknown) {
-        if (!isMock && isUserCancel(error)) {
-          state = wizardReducer(state, { type: 'CANCEL' }, config);
-          options?.onCancel?.(state);
-          const passwordStepIds = config.steps.filter(s => s.type === 'password').map(s => s.id);
-          saveProgress(config.meta.name, {
-            currentStepId: state.currentStepId,
-            answers: state.answers,
-            history: state.history,
-          }, undefined, passwordStepIds);
-          emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: true }, theme);
-          if (!quiet) {
-            console.log(theme.warning('\n  Wizard cancelled.\n'));
+          if (!isMock && options?.asyncValidate) {
+            const asyncError = await options.asyncValidate(currentStep.id, value, nextState.answers);
+            if (asyncError !== null) {
+              console.log(theme.error(`\n  ${asyncError}\n`));
+              state = { ...nextState, errors: {} };
+              continue;
+            }
           }
-          return state.answers;
+
+          if (options?.onAfterStep) {
+            await options.onAfterStep(currentStep.id, value, nextState);
+          }
+
+          state = nextState;
+          emitEvent(renderer, { type: 'step:complete', stepId: currentStep.id, value, step: currentStep }, theme);
+
+          if (mruEnabled && isSelectLikeStep(currentStep.type)) {
+            recordSelection(config.meta.name, currentStep.id, value as string | string[]);
+          }
+
+          options?.onStepComplete?.(currentStep.id, value, state);
+        } catch (error: unknown) {
+          if (!isMock && isUserCancel(error)) {
+            state = wizardReducer(state, { type: 'CANCEL' }, config);
+            options?.onCancel?.(state);
+            const passwordStepIds = config.steps.filter(s => s.type === 'password').map(s => s.id);
+            saveProgress(config.meta.name, {
+              currentStepId: state.currentStepId,
+              answers: state.answers,
+              history: state.history,
+            }, undefined, passwordStepIds);
+            emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: true }, theme);
+            if (!quiet) {
+              console.log(theme.warning('\n  Wizard cancelled.\n'));
+            }
+            return state.answers;
+          }
+          throw error;
         }
-        throw error;
+      }
+
+      // Review screen: after wizard loop completes, before summary
+      if (config.meta.review && !isMock && state.status === 'done') {
+        const reviewLines: string[] = [];
+        for (const step of config.steps) {
+          const answer = state.answers[step.id];
+          if (answer === undefined) continue;
+          const display = step.type === 'password' ? '****' :
+            Array.isArray(answer) ? answer.map(String).join(', ') : String(answer);
+          reviewLines.push(`${step.id}: ${display}`);
+        }
+
+        emitEvent(renderer, { type: 'note', title: 'Review your answers', body: reviewLines.join('\n') }, theme);
+
+        console.log(`\n  ${theme.bold('Review your answers:')}\n`);
+        for (const line of reviewLines) {
+          console.log(`  ${line}`);
+        }
+        console.log();
+
+        const { confirm: confirmPrompt } = await import('@inquirer/prompts');
+        const ok = await confirmPrompt({
+          message: 'Everything look right?',
+          default: true,
+        });
+
+        if (ok) {
+          needsReview = false;
+        } else {
+          const { select: selectPrompt } = await import('@inquirer/prompts');
+          const stepsWithAnswers = config.steps.filter(
+            s => state.answers[s.id] !== undefined && s.type !== 'note' && s.type !== 'message',
+          );
+
+          const stepToRevisit = await selectPrompt({
+            message: 'Which step would you like to change?',
+            choices: stepsWithAnswers.map(s => ({
+              name: `${s.id}: ${s.type === 'password' ? '****' : String(state.answers[s.id] ?? '')}`,
+              value: s.id,
+            })),
+          });
+
+          state = {
+            ...state,
+            currentStepId: stepToRevisit,
+            status: 'running',
+          };
+        }
+      } else {
+        needsReview = false;
       }
     }
 

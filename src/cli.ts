@@ -98,6 +98,7 @@ program
         templateAnswers,
         cache: opts.cache,
         resume: opts.resume,
+        configFilePath: fullPath,
       });
 
       const rawOutputPath = opts.output ?? config.output?.path;

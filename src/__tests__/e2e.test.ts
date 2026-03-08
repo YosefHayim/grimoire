@@ -53,7 +53,7 @@ describe('E2E: basic.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/basic.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/basic.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Project Setup Wizard');
@@ -77,7 +77,7 @@ describe('E2E: conditional.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/conditional.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/conditional.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['project-type']).toBe('web');
@@ -95,7 +95,7 @@ describe('E2E: conditional.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/conditional.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/conditional.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['project-type']).toBe('cli');
@@ -117,7 +117,7 @@ describe('E2E: themed.yaml with mock answers', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/themed.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/themed.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Catppuccin Setup');
@@ -136,7 +136,7 @@ describe('E2E: with-checks.yaml with mock', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/with-checks.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/with-checks.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.answers?.['environment']).toBe('staging');
@@ -146,7 +146,7 @@ describe('E2E: with-checks.yaml with mock', () => {
 
 describe('E2E: --dry-run', () => {
   it('outputs step plan without running prompts', () => {
-    const output = run('run examples/basic.yaml --dry-run');
+    const output = run('run examples/yaml/basic.yaml --dry-run');
 
     expect(output).toContain('Dry Run');
     expect(output).toContain('Project Setup Wizard');
@@ -170,7 +170,7 @@ describe('E2E: invalid config', () => {
 
 describe('E2E: mock with missing required answers', () => {
   it('errors when required step has no mock answer and no default', () => {
-    const output = runExpectFail(`run examples/basic.yaml --mock '{}' --json`);
+    const output = runExpectFail(`run examples/yaml/basic.yaml --mock '{}' --json`);
     const result = JSON.parse(output) as { ok: boolean; error: string };
 
     expect(result.ok).toBe(false);
@@ -188,7 +188,7 @@ describe('E2E: extended.yaml (config inheritance)', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/extended.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/extended.yaml --mock '${mock}' --json`);
 
     expect(result.ok).toBe(true);
     expect(result.wizard).toBe('Extended Project Wizard');
@@ -209,7 +209,7 @@ describe('E2E: --json flag', () => {
       'confirm': true,
     });
 
-    const result = runJson(`run examples/basic.yaml --mock '${mock}' --json`);
+    const result = runJson(`run examples/yaml/basic.yaml --mock '${mock}' --json`);
 
     expect(result).toHaveProperty('ok', true);
     expect(result).toHaveProperty('wizard');
@@ -219,7 +219,7 @@ describe('E2E: --json flag', () => {
   });
 
   it('emits structured JSON envelope on error', () => {
-    const output = runExpectFail(`run examples/basic.yaml --mock '{}' --json`);
+    const output = runExpectFail(`run examples/yaml/basic.yaml --mock '{}' --json`);
     const result = JSON.parse(output) as { ok: boolean; error: string };
 
     expect(result).toHaveProperty('ok', false);
@@ -229,8 +229,13 @@ describe('E2E: --json flag', () => {
 });
 
 describe('E2E: validate all example configs', () => {
-  const exampleFiles = readdirSync(EXAMPLES)
-    .filter((f) => f.endsWith('.yaml') || f.endsWith('.json'));
+  const yamlFiles = readdirSync(resolve(EXAMPLES, 'yaml'))
+    .filter((f) => f.endsWith('.yaml'))
+    .map((f) => `yaml/${f}`);
+  const jsonFiles = readdirSync(resolve(EXAMPLES, 'json'))
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => `json/${f}`);
+  const exampleFiles = [...yamlFiles, ...jsonFiles];
 
   it.each(exampleFiles)('parses %s without errors', async (filename) => {
     const fullPath = resolve(EXAMPLES, filename);

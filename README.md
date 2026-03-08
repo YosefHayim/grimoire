@@ -1324,72 +1324,73 @@ grimoire completion fish > ~/.config/fish/completions/grimoire.fish
 
 ## Examples
 
-The `examples/` directory contains 8 ready-to-run configs.
+The `examples/` directory contains ready-to-run configs in both YAML (`examples/yaml/`) and JSON (`examples/json/`) formats. Every YAML example (except `base.yaml` and `extended.yaml`, which use `extends:`) has a JSON equivalent.
 
-### `examples/basic.yaml`
+### `examples/yaml/basic.yaml`
 
 A 6-step project setup wizard covering the core input types: project name (text with validation and pattern), description (optional text), language (select with default), features (multiselect with min), license (select), and confirm. Good starting point for your own configs.
 
 ```bash
-grimoire run examples/basic.yaml
+grimoire run examples/yaml/basic.yaml
+grimoire run examples/json/basic.json   # JSON equivalent
 ```
 
-### `examples/conditional.yaml`
+### `examples/yaml/conditional.yaml`
 
 An 11-step wizard that branches based on project type. A `select` step with `routes` sends users down one of four paths (web, api, cli, lib), each with its own framework or feature selection step. Additional steps use `when` conditions to show or hide options based on earlier answers.
 
 ```bash
-grimoire run examples/conditional.yaml
+grimoire run examples/yaml/conditional.yaml
 ```
 
-### `examples/themed.yaml`
+### `examples/yaml/themed.yaml`
 
 An 8-step account setup wizard styled with the Catppuccin Mocha color palette. Demonstrates all 7 color tokens and custom icon overrides. Steps cover username, email, role, experience, interests, newsletter, password, and confirm.
 
 ```bash
-grimoire run examples/themed.yaml
+grimoire run examples/yaml/themed.yaml
 ```
 
-### `examples/demo.yaml`
+### `examples/yaml/demo.yaml`
 
 The built-in demo config used by `grimoire demo`. Exercises all 10 step types across 4 named groups: Text Inputs (text, editor, path, password), Selections (select, multiselect, search), Toggles and Numbers (toggle, number), and Confirmation (confirm).
 
 ```bash
-grimoire run examples/demo.yaml
+grimoire run examples/yaml/demo.yaml
 # or
 grimoire demo
 ```
 
-### `examples/all-features.yaml`
+### `examples/yaml/all-features.yaml`
 
 A focused showcase of the newer step types: search, path, toggle, editor, and number, organized into two groups (Project Setup and Configuration).
 
 ```bash
-grimoire run examples/all-features.yaml
+grimoire run examples/yaml/all-features.yaml
 ```
 
-### `examples/base.yaml`
+### `examples/yaml/base.yaml`
 
 A minimal base config with a name step, optional description, and confirm. Intended to be inherited via `extends`.
 
 ```bash
-grimoire run examples/base.yaml
+grimoire run examples/yaml/base.yaml
 ```
 
-### `examples/extended.yaml`
+### `examples/yaml/extended.yaml`
 
 Extends `base.yaml` and adds a language select step. Demonstrates how `extends` merges configs and how the child's `output` and `meta` override the base.
 
 ```bash
-grimoire run examples/extended.yaml
+grimoire run examples/yaml/extended.yaml
 ```
 
-### `examples/with-checks.yaml`
+### `examples/yaml/with-checks.yaml`
 
 A deployment wizard with two pre-flight checks (Node.js and Git). Shows how `checks` abort the wizard before any prompts if the environment isn't ready.
 
 ```bash
-grimoire run examples/with-checks.yaml
+grimoire run examples/yaml/with-checks.yaml
 ```
 
 ---

@@ -184,6 +184,7 @@ program
         '..',
         '..',
         'examples',
+        'yaml',
         'demo.yaml',
       );
       const config = await loadWizardConfig(demoPath);

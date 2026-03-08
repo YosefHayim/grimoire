@@ -45,6 +45,6 @@ jobs:
       - run: npx tsup
       - name: Validate all example configs
         run: |
-          for f in examples/*.yaml; do
+          for f in examples/yaml/*.yaml examples/json/*.json; do
             node dist/cli.js validate "$f"
           done

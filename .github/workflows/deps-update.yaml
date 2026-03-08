@@ -1,0 +1,55 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Update dependencies
+        run: |
+          npx npm-check-updates -u --target minor
+          npm install
+          npx tsc --noEmit
+          npx vitest run
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: deps/weekly-update
+          base: dev
+          commit-message: 'chore(deps): weekly dependency updates'
+          title: 'chore(deps): weekly dependency updates'
+          body: |
+            Automated weekly dependency update.
+
+            - Updated minor/patch versions via `npm-check-updates`
+            - Typecheck and tests pass
+          labels: dependencies
+          delete-branch: true

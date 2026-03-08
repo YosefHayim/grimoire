@@ -61,6 +61,10 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
+      - name: Upgrade npm for Trusted Publishing
+        if: steps.version.outputs.changed == 'true'
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         if: steps.version.outputs.changed == 'true'
         run: npm ci

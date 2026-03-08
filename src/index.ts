@@ -51,4 +51,5 @@ export { renderBanner } from './banner';
 export { loadCachedAnswers, saveCachedAnswers, clearCache, getCacheDir, slugify } from './cache';
 export { recordSelection, getOrderedOptions, clearMruData } from './mru';
 export { InkRenderer } from './renderers/ink';
+export { ClackRenderer } from './renderers/clack';
 export { saveTemplate, loadTemplate, listTemplates, deleteTemplate } from './templates';

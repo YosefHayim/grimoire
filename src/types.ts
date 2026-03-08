@@ -148,6 +148,7 @@ export type StepConfig =
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
 export interface ThemeConfig {
+  preset?: string;
   tokens?: {
     primary?: string;
     success?: string;

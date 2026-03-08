@@ -179,6 +179,7 @@ const hexColorSchema = z.string().regex(
 );
 
 const themeConfigSchema = z.object({
+  preset: z.enum(['default', 'catppuccin', 'dracula', 'nord', 'tokyonight', 'monokai']).optional(),
   tokens: z.object({
     primary: hexColorSchema.optional(),
     success: hexColorSchema.optional(),

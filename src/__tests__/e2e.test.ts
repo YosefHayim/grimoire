@@ -41,7 +41,7 @@ function runExpectFail(args: string): string {
 
 beforeAll(() => {
   execSync('npx tsup', { cwd: ROOT, stdio: 'pipe', timeout: 30000 });
-});
+}, 60000);
 
 describe('E2E: basic.yaml with mock answers', () => {
   it('produces correct JSON output with all answers', () => {

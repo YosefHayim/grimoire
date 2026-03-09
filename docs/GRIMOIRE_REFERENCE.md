@@ -21,7 +21,9 @@ Top-level fields for any grimoire config (YAML or JSON):
 
 **`meta`** fields: `name: string` (required), `version?: string`, `description?: string`, `review?: boolean` (show summary before submit).
 
-**`theme`** fields: `preset?: string`, `tokens?: { primary, secondary, error, ... }`, `icons?: { pointer, checked, ... }`.
+**`theme`** fields: `preset?: string`, `tokens?: { primary, secondary, error, ... }`, `icons?: { pointer, checked, ... }`, `spinner?: string | { frames: string[], interval?: number }`.
+
+**`spinner`** — loading animation preset name or custom frames. Available presets: `dots`, `dots2`, `line`, `arc`, `circle` (default), `circleHalves`, `triangle`, `pipe`, `arrow`, `arrow3`, `bouncingBar`, `bouncingBall`, `simpleDots`, `aesthetic`, `star`. Custom: `{ frames: [">", ">>", ">>>"], interval: 120 }`.
 
 **`output`** fields: `format: 'json' | 'env' | 'yaml'`, `path?: string` (write to file instead of stdout).
 

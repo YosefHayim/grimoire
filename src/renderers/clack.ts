@@ -10,8 +10,8 @@ import {
   S_STEP_ERROR,
   S_CORNER_TR,
   S_CORNER_BR,
-  S_SPINNER_FRAMES,
 } from './symbols';
+import { spinners } from '../spinners';
 import type { ResolvedTheme, StepConfig, WizardEvent } from '../types';
 
 export class ClackRenderer extends InquirerRenderer {
@@ -158,7 +158,7 @@ export class ClackRenderer extends InquirerRenderer {
   private startSpinner(message: string, _theme: ResolvedTheme): void {
     this.spinnerFrameIndex = 0;
     this.spinnerInterval = setInterval(() => {
-      const frame = S_SPINNER_FRAMES[this.spinnerFrameIndex % S_SPINNER_FRAMES.length];
+      const frame = spinners.circle.frames[this.spinnerFrameIndex % spinners.circle.frames.length];
       process.stdout.write(`\r${chalk.gray(S_BAR)}  ${chalk.cyan(frame ?? '')}  ${message}`);
       this.spinnerFrameIndex++;
     }, 80);

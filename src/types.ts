@@ -169,6 +169,7 @@ export interface ThemeConfig {
     stepPending?: string;
     pointer?: string;
   };
+  spinner?: string | { frames: string[]; interval?: number };
 }
 
 // ─── Pre-Flight Check ────────────────────────────────────────────────────────
@@ -260,6 +261,7 @@ export interface ResolvedTheme {
   accent: (text: string) => string;
   bold: (text: string) => string;
   icons: Required<NonNullable<ThemeConfig['icons']>>;
+  spinner: { frames: string[]; interval: number };
 }
 
 // ─── Renderer Interface ─────────────────────────────────────────────────────

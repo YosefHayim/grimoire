@@ -40,6 +40,8 @@ export {
   validateStepAnswer,
 } from './engine';
 export { resolveTheme } from './theme';
+export { spinners, resolveSpinner, DEFAULT_SPINNER } from './spinners';
+export type { SpinnerConfig, SpinnerName } from './spinners';
 export { resolveEnvDefault } from './resolve';
 export { runWizard, runPreFlightChecks } from './runner';
 export type { RunWizardOptions } from './runner';

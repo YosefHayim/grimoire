@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { ThemeConfig, ResolvedTheme } from './types';
 import { THEME_PRESETS } from './themes/presets';
+import { resolveSpinner } from './spinners';
 
 const DEFAULT_TOKENS = {
   primary: '#5B9BD5',
@@ -34,5 +35,6 @@ export function resolveTheme(themeConfig?: ThemeConfig): ResolvedTheme {
     accent: chalk.hex(tokens.accent),
     bold: chalk.bold,
     icons,
+    spinner: resolveSpinner(themeConfig?.spinner),
   };
 }

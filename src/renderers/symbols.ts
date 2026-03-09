@@ -18,7 +18,3 @@ export const S_STEP_ERROR  = u('▲', 'x');
 export const S_CORNER_TR   = u('╮', '+');
 export const S_CORNER_BR   = u('╯', '+');
 export const S_BAR_H       = u('─', '-');
-
-export const S_SPINNER_FRAMES = unicode
-  ? ['◒', '◐', '◓', '◑']
-  : ['•', 'o', 'O', '0'];

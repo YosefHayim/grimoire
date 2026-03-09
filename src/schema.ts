@@ -201,6 +201,13 @@ const themeConfigSchema = z.object({
     stepPending: z.string().optional(),
     pointer: z.string().optional(),
   }).optional(),
+  spinner: z.union([
+    z.string(),
+    z.object({
+      frames: z.array(z.string()).min(1),
+      interval: z.number().positive().optional(),
+    }),
+  ]).optional(),
 });
 
 const preFlightCheckSchema: z.ZodType<PreFlightCheck> = z.object({
@@ -231,6 +238,7 @@ const wizardConfigSchema = z.object({
   extends: z.string().optional(),
   checks: z.array(preFlightCheckSchema).optional(),
   actions: z.array(actionConfigSchema).optional(),
+  onComplete: z.string().optional(),
 }).superRefine((config, ctx) => {
   const stepIds = new Set<string>();
 

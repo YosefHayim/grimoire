@@ -26,6 +26,7 @@ export type {
   WizardRenderer,
   PreFlightCheck,
   ActionConfig,
+  OnCompleteHandler,
 } from './types';
 
 export { parseWizardConfig } from './schema';
@@ -39,6 +40,8 @@ export {
   validateStepAnswer,
 } from './engine';
 export { resolveTheme } from './theme';
+export { spinners, resolveSpinner, DEFAULT_SPINNER } from './spinners';
+export type { SpinnerConfig, SpinnerName } from './spinners';
 export { resolveEnvDefault } from './resolve';
 export { runWizard, runPreFlightChecks } from './runner';
 export type { RunWizardOptions } from './runner';
@@ -46,7 +49,7 @@ export { defineWizard } from './define';
 export { InquirerRenderer } from './renderers/inquirer';
 export type { GrimoirePlugin, StepPlugin } from './plugins';
 export { registerPlugin, getPluginStep, clearPlugins } from './plugins';
-export { resolveTemplate } from './template';
+export { resolveTemplate, resolveTemplateStrict } from './template';
 export { renderBanner } from './banner';
 export { loadCachedAnswers, saveCachedAnswers, clearCache, getCacheDir, slugify } from './cache';
 export { recordSelection, getOrderedOptions, clearMruData } from './mru';

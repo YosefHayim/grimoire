@@ -1,9 +1,11 @@
 import { execSync } from 'node:child_process';
+import { resolve, dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createWizardState, getVisibleSteps, wizardReducer } from './engine';
 import { resolveTheme } from './theme';
 import { InquirerRenderer } from './renderers/inquirer';
 import { resolveEnvDefault, resolveEnvDefaultBoolean, resolveEnvDefaultNumber } from './resolve';
-import { resolveTemplate } from './template';
+import { resolveTemplate, resolveTemplateStrict } from './template';
 import { renderBanner } from './banner';
 import { registerPlugin, getPluginStep, clearPlugins } from './plugins';
 import type { GrimoirePlugin } from './plugins';
@@ -34,6 +36,7 @@ export interface RunWizardOptions {
   cache?: boolean | { dir?: string };
   mru?: boolean;
   resume?: boolean;
+  configFilePath?: string;
 }
 
 export function runPreFlightChecks(
@@ -333,8 +336,13 @@ export async function runWizard(
       renderer.renderSummary(state.answers, config.steps, theme);
     }
 
-    if (state.status === 'done' && config.actions && config.actions.length > 0 && !isMock) {
-      await executeActions(config.actions, state.answers, theme, renderer);
+    if (state.status === 'done' && !isMock) {
+      if (config.onComplete) {
+        await executeOnComplete(config.onComplete, options?.configFilePath, state.answers, config, theme, renderer);
+      }
+      if (config.actions && config.actions.length > 0) {
+        await executeActions(config.actions, state.answers, theme, renderer);
+      }
     }
 
     emitEvent(renderer, { type: 'session:end', answers: state.answers, cancelled: state.status === 'cancelled' }, theme);
@@ -579,6 +587,35 @@ function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>
   }
 }
 
+async function executeOnComplete(
+  handlerPath: string,
+  configFilePath: string | undefined,
+  answers: Record<string, unknown>,
+  config: WizardConfig,
+  theme: ResolvedTheme,
+  renderer?: WizardRenderer,
+): Promise<void> {
+  if (renderer) emitEvent(renderer, { type: 'oncomplete:start' }, theme);
+
+  const resolvedPath = configFilePath
+    ? resolve(dirname(configFilePath), handlerPath)
+    : resolve(handlerPath);
+
+  try {
+    const mod = await import(pathToFileURL(resolvedPath).href);
+    if (typeof mod.default !== 'function') {
+      throw new Error(`onComplete handler "${handlerPath}" must export a default function`);
+    }
+    await mod.default({ answers, config });
+    if (renderer) emitEvent(renderer, { type: 'oncomplete:pass' }, theme);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (renderer) emitEvent(renderer, { type: 'oncomplete:fail', error: message }, theme);
+    console.log(`\n  ${theme.error('✗')} onComplete handler failed: ${message}\n`);
+    throw error;
+  }
+}
+
 async function executeActions(
   actions: ActionConfig[],
   answers: Record<string, unknown>,
@@ -593,8 +630,8 @@ async function executeActions(
       continue;
     }
 
-    const resolvedCommand = resolveTemplate(action.run, answers);
-    const resolvedName = action.name ? resolveTemplate(action.name, answers) : undefined;
+    const resolvedCommand = resolveTemplateStrict(action.run, answers);
+    const resolvedName = action.name ? resolveTemplateStrict(action.name, answers) : undefined;
     const label = resolvedName ?? resolvedCommand;
 
     try {

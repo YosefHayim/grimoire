@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { THEME_PRESETS, PRESET_NAMES } from '../themes/presets';
 import { resolveTheme } from '../theme';
 import { parseWizardConfig } from '../schema';
+import { spinners } from '../spinners';
 
 describe('theme presets', () => {
   it('exports all 6 preset names', () => {
@@ -55,5 +56,38 @@ describe('theme presets', () => {
       steps: [{ id: 'a', type: 'text', message: 'A?' }],
       theme: { preset: 'nonexistent' },
     })).toThrow();
+  });
+
+  it('resolveTheme returns default spinner when no spinner config', () => {
+    const theme = resolveTheme();
+    expect(theme.spinner).toEqual(spinners.circle);
+  });
+
+  it('resolveTheme resolves named spinner preset', () => {
+    const theme = resolveTheme({ spinner: 'dots' });
+    expect(theme.spinner).toEqual(spinners.dots);
+  });
+
+  it('resolveTheme resolves custom spinner frames', () => {
+    const theme = resolveTheme({ spinner: { frames: ['a', 'b'], interval: 100 } });
+    expect(theme.spinner).toEqual({ frames: ['a', 'b'], interval: 100 });
+  });
+
+  it('schema accepts spinner string in theme config', () => {
+    const config = parseWizardConfig({
+      meta: { name: 'Test' },
+      steps: [{ id: 'a', type: 'text', message: 'A?' }],
+      theme: { spinner: 'dots' },
+    });
+    expect(config.theme?.spinner).toBe('dots');
+  });
+
+  it('schema accepts spinner object in theme config', () => {
+    const config = parseWizardConfig({
+      meta: { name: 'Test' },
+      steps: [{ id: 'a', type: 'text', message: 'A?' }],
+      theme: { spinner: { frames: ['x', 'y'], interval: 200 } },
+    });
+    expect(config.theme?.spinner).toEqual({ frames: ['x', 'y'], interval: 200 });
   });
 });

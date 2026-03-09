@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execSync } from 'node:child_process';
-import { resolve } from 'node:path';
-import { readdirSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { parseWizardConfig } from '../schema';
 import { loadWizardConfig } from '../parser';
 
@@ -40,7 +41,7 @@ function runExpectFail(args: string): string {
 
 beforeAll(() => {
   execSync('npx tsup', { cwd: ROOT, stdio: 'pipe', timeout: 30000 });
-});
+}, 60000);
 
 describe('E2E: basic.yaml with mock answers', () => {
   it('produces correct JSON output with all answers', () => {
@@ -155,6 +156,27 @@ describe('E2E: --dry-run', () => {
     expect(output).toContain('multiselect');
     expect(output).toContain('project-name');
     expect(output).toContain('language');
+  });
+
+  it('shows onComplete handler in dry-run output', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'grimoire-dryrun-oc-'));
+    const configFile = join(tmpDir, 'wizard.json');
+    writeFileSync(
+      configFile,
+      JSON.stringify({
+        meta: { name: 'DryRun OnComplete Test' },
+        onComplete: './handlers/my-handler.ts',
+        steps: [{ id: 'name', type: 'text', message: 'Name?' }],
+        actions: [{ name: 'Echo', run: 'echo hello' }],
+      }),
+    );
+
+    const result = run(`run "${configFile}" --dry-run`);
+    expect(result).toContain('onComplete handler');
+    expect(result).toContain('./handlers/my-handler.ts');
+    expect(result).toContain('Echo');
+
+    rmSync(tmpDir, { recursive: true });
   });
 });
 
@@ -546,5 +568,25 @@ describe('E2E: scraper-selector.yaml with mock answers', () => {
     expect(result.wizard).toBe('Web Scraper CLI');
     expect(result.answers?.['scraper']).toBe('reelshort');
     expect(result.answers?.['output-format']).toBe('json');
+  });
+});
+
+describe('E2E: onComplete handler', () => {
+  it('parses config with onComplete and runs in mock mode (onComplete skipped)', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'grimoire-oncomplete-'));
+    const configFile = join(tmpDir, 'wizard.json');
+    writeFileSync(
+      configFile,
+      JSON.stringify({
+        meta: { name: 'OnComplete Test' },
+        onComplete: './handler.mjs',
+        steps: [{ id: 'name', type: 'text', message: 'Name?' }],
+      }),
+    );
+
+    const result = run(`run "${configFile}" --mock '{"name":"test-value"}' --plain`);
+    expect(result).toContain('OnComplete Test');
+
+    rmSync(tmpDir, { recursive: true });
   });
 });

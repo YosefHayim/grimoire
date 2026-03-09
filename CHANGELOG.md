@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-09
+
+### Added
+- **Strict template interpolation** — `{{step-id}}` placeholders in action `run` commands are resolved from wizard answers; missing step-ids throw an error and abort execution
+- **`onComplete` handler** — reference a TypeScript/JavaScript file from your config; its default export is called with `{ answers, config }` after the wizard completes, before actions run
+- **Dry-run action preview** — `--dry-run` now shows configured actions and onComplete handler alongside the step plan
+- **`oncomplete:start`, `oncomplete:pass`, `oncomplete:fail` events** — new WizardEvent types for renderer integration
+- **AI agent reference doc** — `docs/GRIMOIRE_REFERENCE.md` provides a single-file schema reference for AI assistants to generate grimoire configs
+- **Example configs** — `with-actions.yaml` and `with-oncomplete.yaml` demonstrating actions with `{{step-id}}` interpolation and onComplete handlers
+- **15 spinner presets** — configurable loading animations via `theme.spinner`: `dots`, `dots2`, `line`, `arc`, `circle`, `circleHalves`, `triangle`, `pipe`, `arrow`, `arrow3`, `bouncingBar`, `bouncingBall`, `simpleDots`, `aesthetic`, `star`. Supports custom frame arrays.
+
+### Changed
+- `executeActions` now uses strict interpolation — unresolved `{{step-id}}` placeholders throw instead of being left as-is
+
 ## [0.4.0] - 2026-03-08
 
 ### Added

@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AI agent reference doc** — `docs/GRIMOIRE_REFERENCE.md` provides a single-file schema reference for AI assistants to generate grimoire configs
 - **Example configs** — `with-actions.yaml` and `with-oncomplete.yaml` demonstrating actions with `{{step-id}}` interpolation and onComplete handlers
 - **15 spinner presets** — configurable loading animations via `theme.spinner`: `dots`, `dots2`, `line`, `arc`, `circle`, `circleHalves`, `triangle`, `pipe`, `arrow`, `arrow3`, `bouncingBar`, `bouncingBall`, `simpleDots`, `aesthetic`, `star`. Supports custom frame arrays.
+- **Spinner events wired** — `spinner:start`/`spinner:stop` now emitted automatically during pre-flight checks, actions, and onComplete handlers. ClackRenderer shows animated spinners during these operations.
+- **`optionsProvider` callback** — programmatic API for dynamically loading select/multiselect/search options from async sources (APIs, databases). Spinner shown while fetching.
 
 ### Changed
 - `executeActions` now uses strict interpolation — unresolved `{{step-id}}` placeholders throw instead of being left as-is

@@ -571,6 +571,21 @@ describe('E2E: scraper-selector.yaml with mock answers', () => {
   });
 });
 
+describe('E2E: spinner events', () => {
+  it('shows spinners during pre-flight checks', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'grimoire-spinner-'));
+    const configFile = join(tmpDir, 'wizard.json');
+    writeFileSync(configFile, JSON.stringify({
+      meta: { name: 'Spinner Check Test' },
+      checks: [{ name: 'Echo test', run: 'echo ok', message: 'echo failed' }],
+      steps: [{ id: 'name', type: 'text', message: 'Name?' }],
+    }));
+    const result = run(`run "${configFile}" --mock '{"name":"test"}' --renderer clack`);
+    expect(result).toContain('Spinner Check Test');
+    rmSync(tmpDir, { recursive: true });
+  });
+});
+
 describe('E2E: onComplete handler', () => {
   it('parses config with onComplete and runs in mock mode (onComplete skipped)', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'grimoire-oncomplete-'));

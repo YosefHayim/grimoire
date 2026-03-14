@@ -37,6 +37,10 @@ export interface RunWizardOptions {
   mru?: boolean;
   resume?: boolean;
   configFilePath?: string;
+  optionsProvider?: (
+    stepId: string,
+    answers: Record<string, unknown>,
+  ) => Promise<Array<{ value: string; label: string; description?: string }> | undefined>;
 }
 
 export function runPreFlightChecks(
@@ -46,11 +50,14 @@ export function runPreFlightChecks(
 ): void {
   if (renderer) emitEvent(renderer, { type: 'checks:start', checks }, theme);
   for (const check of checks) {
+    if (renderer) emitEvent(renderer, { type: 'spinner:start', message: check.name }, theme);
     try {
       execSync(check.run, { stdio: 'pipe' });
+      if (renderer) emitEvent(renderer, { type: 'spinner:stop', message: `${check.name}` }, theme);
       console.log(`  ${theme.success('✓')} ${check.name}`);
       if (renderer) emitEvent(renderer, { type: 'check:pass', name: check.name }, theme);
     } catch {
+      if (renderer) emitEvent(renderer, { type: 'spinner:stop' }, theme);
       console.log(`  ${theme.error('✗')} ${check.name}: ${check.message}`);
       if (renderer) emitEvent(renderer, { type: 'check:fail', name: check.name, message: check.message }, theme);
       throw new Error(`Pre-flight check failed: ${check.name} — ${check.message}`);
@@ -204,12 +211,22 @@ export async function runWizard(
         const templatedStep = resolveStepTemplates(withTemplate, state.answers);
         const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
 
+        let finalStep = mruStep;
+        if (options?.optionsProvider && isSelectLikeStep(currentStep.type)) {
+          if (renderer) emitEvent(renderer, { type: 'spinner:start', message: resolvedMessage }, theme);
+          const dynamicOptions = await options.optionsProvider(currentStep.id, state.answers);
+          if (renderer) emitEvent(renderer, { type: 'spinner:stop', message: resolvedMessage }, theme);
+          if (dynamicOptions) {
+            finalStep = { ...mruStep, options: dynamicOptions } as StepConfig;
+          }
+        }
+
         try {
           const value = isMock
-            ? getMockValue(mruStep, mockAnswers)
+            ? getMockValue(finalStep, mockAnswers)
             : pluginStep
-              ? await pluginStep.render(toStepRecord(mruStep), state, theme)
-              : await renderStep(renderer, mruStep, state, theme);
+              ? await pluginStep.render(toStepRecord(finalStep), state, theme)
+              : await renderStep(renderer, finalStep, state, theme);
 
           if (pluginStep?.validate) {
             const pluginError = pluginStep.validate(value, toStepRecord(templatedStep));
@@ -596,6 +613,7 @@ async function executeOnComplete(
   renderer?: WizardRenderer,
 ): Promise<void> {
   if (renderer) emitEvent(renderer, { type: 'oncomplete:start' }, theme);
+  if (renderer) emitEvent(renderer, { type: 'spinner:start', message: `Running onComplete handler...` }, theme);
 
   const resolvedPath = configFilePath
     ? resolve(dirname(configFilePath), handlerPath)
@@ -607,9 +625,11 @@ async function executeOnComplete(
       throw new Error(`onComplete handler "${handlerPath}" must export a default function`);
     }
     await mod.default({ answers, config });
+    if (renderer) emitEvent(renderer, { type: 'spinner:stop', message: 'Handler complete' }, theme);
     if (renderer) emitEvent(renderer, { type: 'oncomplete:pass' }, theme);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (renderer) emitEvent(renderer, { type: 'spinner:stop' }, theme);
     if (renderer) emitEvent(renderer, { type: 'oncomplete:fail', error: message }, theme);
     console.log(`\n  ${theme.error('✗')} onComplete handler failed: ${message}\n`);
     throw error;
@@ -634,11 +654,14 @@ async function executeActions(
     const resolvedName = action.name ? resolveTemplateStrict(action.name, answers) : undefined;
     const label = resolvedName ?? resolvedCommand;
 
+    if (renderer) emitEvent(renderer, { type: 'spinner:start', message: label }, theme);
     try {
       execSync(resolvedCommand, { stdio: 'pipe' });
+      if (renderer) emitEvent(renderer, { type: 'spinner:stop', message: label }, theme);
       console.log(`  ${theme.success('✓')} ${label}`);
       if (renderer) emitEvent(renderer, { type: 'action:pass', name: label }, theme);
     } catch {
+      if (renderer) emitEvent(renderer, { type: 'spinner:stop' }, theme);
       console.log(`  ${theme.error('✗')} ${label}`);
       if (renderer) emitEvent(renderer, { type: 'action:fail', name: label }, theme);
       throw new Error(`Action failed: ${label}`);

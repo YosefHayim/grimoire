@@ -1,0 +1,32 @@
+# PR auto-labeler configuration
+# Used by .github/workflows/labeler.yml
+
+feature:
+  - changed-files:
+    - any-glob-to-any-file: 'src/**/*.ts'
+    - any-glob-to-any-file: '!src/**/*.test.ts'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: 'src/**/*.test.ts'
+    - any-glob-to-any-file: 'src/__tests__/**'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**'
+    - any-glob-to-any-file: 'README.md'
+    - any-glob-to-any-file: 'CHANGELOG.md'
+    - any-glob-to-any-file: '*.md'
+
+examples:
+  - changed-files:
+    - any-glob-to-any-file: 'examples/**'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file: '.github/**'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: 'package.json'
+    - any-glob-to-any-file: 'package-lock.json'

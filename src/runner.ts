@@ -672,7 +672,7 @@ async function executeActions(
 
 function printWizardHeader(config: WizardConfig, theme: ResolvedTheme, plain?: boolean): void {
   console.log();
-  console.log(renderBanner(config.meta.name, theme, { plain }));
+  console.log(renderBanner(config.meta.name, theme, { plain, icon: config.meta.icon }));
   if (config.meta.description) {
     console.log(`  ${theme.muted(config.meta.description)}`);
   }

@@ -11,10 +11,13 @@ const GRIMOIRE_GRADIENT = gradient(['#C084FC', '#5B9BD5', '#6BCB77']);
 export function renderBanner(
   name: string,
   theme: ResolvedTheme,
-  options?: { plain?: boolean },
+  options?: { plain?: boolean; icon?: string },
 ): string {
+  const icon = options?.icon;
+  const prefix = icon ? `${icon}  ` : '';
+
   if (options?.plain) {
-    return `  ${theme.bold(name)}`;
+    return `  ${prefix}${theme.bold(name)}`;
   }
 
   try {
@@ -28,8 +31,9 @@ export function renderBanner(
       .map((line) => `  ${line}`)
       .join('\n');
 
-    return GRIMOIRE_GRADIENT(lines);
+    const banner = GRIMOIRE_GRADIENT(lines);
+    return icon ? `  ${icon}\n${banner}` : banner;
   } catch {
-    return `  ${theme.bold(name)}`;
+    return `  ${prefix}${theme.bold(name)}`;
   }
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-15
+
+### Added
+- **`meta.icon` emoji support** — add an `icon` field to your wizard's `meta` config to render an emoji above the ASCII banner
+- **Spinner events wired** — `spinner:start`/`spinner:stop` now emitted during pre-flight checks, actions, and onComplete handlers
+- **`optionsProvider` callback** — programmatic API for dynamically loading select/multiselect/search options from async sources (APIs, databases)
+
 ## [0.5.0] - 2026-03-09
 
 ### Added

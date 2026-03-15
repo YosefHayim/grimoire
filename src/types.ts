@@ -198,7 +198,7 @@ export type OnCompleteHandler = (context: {
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
-  meta: { name: string; version?: string; description?: string; review?: boolean };
+  meta: { name: string; version?: string; description?: string; review?: boolean; icon?: string };
   theme?: ThemeConfig;
   steps: StepConfig[];
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };

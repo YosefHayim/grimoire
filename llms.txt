@@ -1,0 +1,33 @@
+# grimoire-wizard
+
+> Config-driven CLI wizard framework for Node.js. Write a YAML or JSON file — get an interactive terminal wizard.
+
+## What it is
+
+grimoire-wizard lets you define interactive CLI wizards as YAML or JSON config files. No code required for simple wizards. Full TypeScript API when you need to go deeper. Works as a standalone CLI, a library, or a non-interactive CI/CD step.
+
+## Install
+
+npm install -g grimoire-wizard
+
+## Key capabilities
+
+- 11 step types: text, select, multiselect, confirm, password, number, search, editor, path, toggle, note
+- Conditional branching (when conditions), route-based navigation, back-navigation
+- Post-wizard shell actions with {{step-id}} interpolation
+- onComplete TypeScript handler file for complex business logic
+- 6 theme presets (default, catppuccin, dracula, nord, tokyonight, monokai) + 15 spinner presets
+- --mock mode for CI/CD, --dry-run preview, --json structured output
+- Answer caching, progress persistence, review screen, wizard pipelines
+- Programmatic API: runWizard(), defineWizard(), plugin system
+
+## Full reference
+
+https://raw.githubusercontent.com/YosefHayim/grimoire/main/docs/GRIMOIRE_REFERENCE.md
+
+## Package
+
+npm: grimoire-wizard
+GitHub: https://github.com/YosefHayim/grimoire
+License: MIT
+Node: >= 18 (ESM)

@@ -7,3 +7,4 @@ coverage/
 .env.local
 pnpm-lock.yaml
 .sisyphus/
+docs/typedoc/

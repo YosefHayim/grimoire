@@ -169,6 +169,22 @@ describe('HookContext.prompt', () => {
 
     expect(promptResult).toBe('fallback');
   });
+
+  it('prompt throws in mock mode without default', async () => {
+    const config: WizardConfig = {
+      meta: { name: 'Test' },
+      steps: [{ id: 'a', type: 'text', message: 'A?' }],
+    };
+
+    await expect(
+      runWizard(config, {
+        mockAnswers: { a: 'x' },
+        onAfterStep: async (_stepId, _value, context) => {
+          await context.prompt({ type: 'text', message: 'No default' });
+        },
+      }),
+    ).rejects.toThrow('Mock mode: context.prompt() requires a default value');
+  });
 });
 
 describe('backward compatibility', () => {

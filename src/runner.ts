@@ -13,12 +13,12 @@ import { evaluateCondition } from './conditions';
 import { loadCachedAnswers, saveCachedAnswers } from './cache';
 import { saveProgress, loadProgress, clearProgress } from './progress';
 import { recordSelection, getOrderedOptions } from './mru';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { platform } from 'node:os';
 import type { ActionConfig, HookContext, OptionsFromFn, PreFlightCheck, PromptConfig, SelectChoice, SelectOption, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 function emitEvent(renderer: WizardRenderer, event: WizardEvent, theme: ResolvedTheme): void {
   if (renderer.onEvent) {
@@ -193,24 +193,39 @@ export async function runWizard(
             nextStepOverride = stepId;
           },
           openBrowser: async (url: string) => {
-            if (!isMock) {
-              const os = platform();
-              const cmd = os === 'darwin' ? 'open' : os === 'win32' ? 'start ""' : 'xdg-open';
-              await execAsync(`${cmd} ${JSON.stringify(url)}`);
+            if (isMock) return;
+            const os = platform();
+            try {
+              if (os === 'win32') {
+                await execFileAsync('cmd', ['/c', 'start', '', url]);
+              } else {
+                const opener = os === 'darwin' ? 'open' : 'xdg-open';
+                await execFileAsync(opener, [url]);
+              }
+            } catch {
+              emitEvent(renderer, {
+                type: 'note',
+                title: 'Could not open browser',
+                body: `Open this URL manually: ${url}`,
+              }, theme);
             }
           },
           prompt: async (promptConfig: PromptConfig): Promise<unknown> => {
             if (isMock) {
-              return promptConfig.default ?? '';
+              if (promptConfig.default !== undefined) {
+                return promptConfig.default;
+              }
+              throw new Error('Mock mode: context.prompt() requires a default value');
             }
+            const contextState = stateOverride ?? state;
             const tempStep = {
               id: '__hook_prompt__',
               ...promptConfig,
               ...(promptConfig.type === 'select'
-                ? { options: promptConfig.options ?? [] }
+                ? { options: (promptConfig as { options?: SelectOption[] }).options ?? [] }
                 : {}),
             } as StepConfig;
-            return renderStep(renderer, tempStep, state, theme);
+            return renderStep(renderer, tempStep, contextState, theme);
           },
         });
 
@@ -273,9 +288,13 @@ export async function runWizard(
           if (!isMock) {
             emitEvent(renderer, { type: 'spinner:start', message: resolvedMessage }, theme);
           }
-          const dynamicOpts = await optionsFromFn(state.answers);
-          if (!isMock) {
-            emitEvent(renderer, { type: 'spinner:stop', message: resolvedMessage }, theme);
+          let dynamicOpts: SelectOption[];
+          try {
+            dynamicOpts = await optionsFromFn(state.answers);
+          } finally {
+            if (!isMock) {
+              emitEvent(renderer, { type: 'spinner:stop', message: resolvedMessage }, theme);
+            }
           }
           finalStep = { ...finalStep, options: dynamicOpts } as StepConfig;
         }
@@ -337,6 +356,10 @@ export async function runWizard(
           }
 
           if (nextStepOverride) {
+            const targetExists = config.steps.some(s => s.id === nextStepOverride);
+            if (!targetExists) {
+              throw new Error(`setNextStep: step "${nextStepOverride}" does not exist`);
+            }
             state = { ...nextState, currentStepId: nextStepOverride };
             nextStepOverride = undefined;
           } else {
@@ -638,20 +661,20 @@ function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>
     case 'select':
       return {
         ...step,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'multiselect':
       return {
         ...step,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'search':
       return {
         ...step,
         placeholder: step.placeholder ? resolveTemplate(step.placeholder, answers) : undefined,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'path':

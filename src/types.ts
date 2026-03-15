@@ -281,12 +281,11 @@ export interface ResolvedTheme {
 
 // ─── Hook Context ───────────────────────────────────────────────────────────
 
-export interface PromptConfig {
-  type: 'text' | 'select' | 'confirm' | 'password' | 'number';
-  message: string;
-  options?: SelectOption[];
-  default?: unknown;
-}
+export type PromptConfig =
+  | { type: 'select'; message: string; options: SelectOption[]; default?: string }
+  | { type: 'text' | 'password'; message: string; default?: string }
+  | { type: 'confirm'; message: string; default?: boolean }
+  | { type: 'number'; message: string; default?: number };
 
 export interface HookContext {
   answers: Record<string, unknown>;

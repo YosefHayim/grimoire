@@ -80,7 +80,7 @@ const selectStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('select'),
   options: z.array(selectChoiceSchema).min(1).optional(),
-  optionsFrom: z.string().optional(),
+  optionsFrom: z.union([z.string(), z.custom<Function>(v => typeof v === 'function')]).optional(),
   default: z.string().optional(),
   routes: z.record(z.string(), z.string()).optional(),
   pageSize: z.number().int().positive().optional(),
@@ -91,7 +91,7 @@ const multiSelectStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('multiselect'),
   options: z.array(selectChoiceSchema).min(1).optional(),
-  optionsFrom: z.string().optional(),
+  optionsFrom: z.union([z.string(), z.custom<Function>(v => typeof v === 'function')]).optional(),
   default: z.array(z.string()).optional(),
   min: z.number().int().nonnegative().optional(),
   max: z.number().int().positive().optional(),
@@ -124,7 +124,7 @@ const searchStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('search'),
   options: z.array(selectChoiceSchema).min(1).optional(),
-  optionsFrom: z.string().optional(),
+  optionsFrom: z.union([z.string(), z.custom<Function>(v => typeof v === 'function')]).optional(),
   default: z.string().optional(),
   placeholder: z.string().optional(),
   pageSize: z.number().int().positive().optional(),
@@ -162,6 +162,7 @@ const messageStepSchema = z.object({
 const noteStepSchema = z.object({
   ...baseStepFields,
   type: z.literal('note'),
+  dynamicContent: z.custom<Function>(v => typeof v === 'function').optional(),
 });
 
 const stepConfigSchema = z.discriminatedUnion('type', [

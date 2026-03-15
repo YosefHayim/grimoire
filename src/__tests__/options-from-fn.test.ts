@@ -11,12 +11,11 @@ describe('optionsFrom as function', () => {
           id: 'choice',
           type: 'select' as const,
           message: 'Pick one',
-          options: [],
           optionsFrom: async () => [
             { value: 'a', label: 'Alpha' },
             { value: 'b', label: 'Beta' },
           ],
-        },
+        } as any,
       ],
     };
 
@@ -37,12 +36,11 @@ describe('optionsFrom as function', () => {
           id: 'choice',
           type: 'select' as const,
           message: 'Pick one',
-          options: [],
           optionsFrom: async (answers: Record<string, unknown>): Promise<SelectOption[]> => {
             receivedAnswers = answers;
             return [{ value: 'x', label: 'X' }];
           },
-        },
+        } as any,
       ],
     };
 
@@ -58,12 +56,11 @@ describe('optionsFrom as function', () => {
           id: 'picks',
           type: 'multiselect' as const,
           message: 'Pick',
-          options: [],
           optionsFrom: async () => [
             { value: 'a', label: 'A' },
             { value: 'b', label: 'B' },
           ],
-        },
+        } as any,
       ],
     };
 

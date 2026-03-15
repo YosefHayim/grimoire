@@ -60,10 +60,12 @@ export interface TextStepConfig extends BaseStepConfig {
   validate?: ValidationRule[];
 }
 
+export type OptionsFromFn = (answers: Record<string, unknown>) => Promise<SelectOption[]> | SelectOption[];
+
 export interface SelectStepConfig extends BaseStepConfig {
   type: 'select';
   options: SelectChoice[];
-  optionsFrom?: string;
+  optionsFrom?: string | OptionsFromFn;
   default?: string;
   routes?: Record<string, string>;
   pageSize?: number;
@@ -73,7 +75,7 @@ export interface SelectStepConfig extends BaseStepConfig {
 export interface MultiSelectStepConfig extends BaseStepConfig {
   type: 'multiselect';
   options: SelectChoice[];
-  optionsFrom?: string;
+  optionsFrom?: string | OptionsFromFn;
   default?: string[];
   min?: number;
   max?: number;
@@ -102,7 +104,7 @@ export interface NumberStepConfig extends BaseStepConfig {
 export interface SearchStepConfig extends BaseStepConfig {
   type: 'search';
   options: SelectChoice[];
-  optionsFrom?: string;
+  optionsFrom?: string | OptionsFromFn;
   default?: string;
   placeholder?: string;
   pageSize?: number;
@@ -133,8 +135,11 @@ export interface MessageStepConfig extends BaseStepConfig {
   type: 'message';
 }
 
+export type DynamicContentFn = (answers: Record<string, unknown>) => Promise<string> | string;
+
 export interface NoteStepConfig extends BaseStepConfig {
   type: 'note';
+  dynamicContent?: DynamicContentFn;
 }
 
 export type StepConfig =
@@ -199,7 +204,16 @@ export type OnCompleteHandler = (context: {
 // ─── Wizard Config ───────────────────────────────────────────────────────────
 
 export interface WizardConfig {
-  meta: { name: string; version?: string; description?: string; review?: boolean; icon?: string };
+  meta: {
+    name: string;
+    version?: string;
+    description?: string;
+    review?: boolean;
+    icon?: string;
+    banner?: string;
+    subtitle?: string;
+    clearBetweenSteps?: boolean;
+  };
   theme?: ThemeConfig;
   steps: StepConfig[];
   output?: { format: 'json' | 'env' | 'yaml'; path?: string };
@@ -230,7 +244,7 @@ export type WizardTransition =
 // ─── Events ──────────────────────────────────────────────────────────────────
 
 export type WizardEvent =
-  | { type: 'session:start'; wizard: string; description?: string; totalSteps: number }
+  | { type: 'session:start'; wizard: string; description?: string; totalSteps: number; banner?: string; subtitle?: string }
   | { type: 'session:end'; answers: Record<string, unknown>; cancelled: boolean }
   | { type: 'group:start'; group: string }
   | { type: 'step:start'; stepId: string; stepIndex: number; totalVisible: number; step: StepConfig }
@@ -263,6 +277,24 @@ export interface ResolvedTheme {
   bold: (text: string) => string;
   icons: Required<NonNullable<ThemeConfig['icons']>>;
   spinner: { frames: string[]; interval: number };
+}
+
+// ─── Hook Context ───────────────────────────────────────────────────────────
+
+export interface PromptConfig {
+  type: 'text' | 'select' | 'confirm' | 'password' | 'number';
+  message: string;
+  options?: SelectOption[];
+  default?: unknown;
+}
+
+export interface HookContext {
+  answers: Record<string, unknown>;
+  state: WizardState;
+  showNote: (title: string, body: string) => void;
+  setNextStep: (stepId: string) => void;
+  openBrowser: (url: string) => Promise<void>;
+  prompt: (config: PromptConfig) => Promise<unknown>;
 }
 
 // ─── Renderer Interface ─────────────────────────────────────────────────────

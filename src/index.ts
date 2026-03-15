@@ -27,6 +27,10 @@ export type {
   PreFlightCheck,
   ActionConfig,
   OnCompleteHandler,
+  HookContext,
+  PromptConfig,
+  OptionsFromFn,
+  DynamicContentFn,
 } from './types';
 
 export { parseWizardConfig } from './schema';

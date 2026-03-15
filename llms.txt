@@ -16,7 +16,7 @@ npm install -g grimoire-wizard
 - Conditional branching (when conditions), route-based navigation, back-navigation
 - Post-wizard shell actions with {{step-id}} interpolation
 - onComplete TypeScript handler file for complex business logic
-- 6 theme presets (catppuccin, dracula, nord, tokyonight, monokai) + 15 spinner presets
+- 6 theme presets (default, catppuccin, dracula, nord, tokyonight, monokai) + 15 spinner presets
 - --mock mode for CI/CD, --dry-run preview, --json structured output
 - Answer caching, progress persistence, review screen, wizard pipelines
 - Programmatic API: runWizard(), defineWizard(), plugin system

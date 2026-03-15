@@ -13,7 +13,7 @@ import { evaluateCondition } from './conditions';
 import { loadCachedAnswers, saveCachedAnswers } from './cache';
 import { saveProgress, loadProgress, clearProgress } from './progress';
 import { recordSelection, getOrderedOptions } from './mru';
-import type { ActionConfig, PreFlightCheck, SelectChoice, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
+import type { ActionConfig, PreFlightCheck, SelectChoice, SelectOption, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
 
 function emitEvent(renderer: WizardRenderer, event: WizardEvent, theme: ResolvedTheme): void {
   if (renderer.onEvent) {
@@ -40,7 +40,7 @@ export interface RunWizardOptions {
   optionsProvider?: (
     stepId: string,
     answers: Record<string, unknown>,
-  ) => Promise<Array<{ value: string; label: string; description?: string }> | undefined>;
+  ) => Promise<SelectOption[] | undefined>;
 }
 
 export function runPreFlightChecks(
@@ -212,7 +212,7 @@ export async function runWizard(
         const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
 
         let finalStep = mruStep;
-        if (options?.optionsProvider && isSelectLikeStep(currentStep.type)) {
+        if (!isMock && options?.optionsProvider && isSelectLikeStep(currentStep.type)) {
           if (renderer) emitEvent(renderer, { type: 'spinner:start', message: resolvedMessage }, theme);
           const dynamicOptions = await options.optionsProvider(currentStep.id, state.answers);
           if (renderer) emitEvent(renderer, { type: 'spinner:stop', message: resolvedMessage }, theme);

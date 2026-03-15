@@ -14,12 +14,65 @@ npm install -g grimoire-wizard
 
 - 11 step types: text, select, multiselect, confirm, password, number, search, editor, path, toggle, note
 - Conditional branching (when conditions), route-based navigation, back-navigation
-- Post-wizard shell actions with {{step-id}} interpolation
-- onComplete TypeScript handler file for complex business logic
-- 6 theme presets (default, catppuccin, dracula, nord, tokyonight, monokai) + 15 spinner presets
-- --mock mode for CI/CD, --dry-run preview, --json structured output
+- Post-wizard shell actions with {{step-id}} interpolation — missing step-ids throw and abort
+- onComplete TypeScript handler file: `onComplete: ./handlers/setup.ts` (runs before actions)
+- 6 theme presets (default, catppuccin, dracula, nord, tokyonight, monokai)
+- 15 spinner presets via `theme.spinner` (dots, arc, circle, bouncingBar, star, …) + custom frames
+- Emoji banner support via `meta.icon: "🍋"` — renders alongside ASCII art
+- Spinner events auto-emitted during pre-flight checks, actions, and onComplete handler
+- --mock mode for CI/CD, --dry-run preview (shows steps + actions + onComplete), --json structured output
 - Answer caching, progress persistence, review screen, wizard pipelines
-- Programmatic API: runWizard(), defineWizard(), plugin system
+- Programmatic API: runWizard(), defineWizard()
+
+## Programmatic API options (RunWizardOptions)
+
+- `optionsProvider(stepId, answers)` — async function to load dynamic options for select/multiselect/search steps (shows spinner while loading)
+- `asyncValidate(stepId, value, answers)` — async validation that blocks step progression
+- `onBeforeStep(stepId, step, state)` — hook to mutate step config before rendering
+- `onAfterStep(stepId, value, state)` — hook to react after a step completes
+- `templateAnswers` — pre-fill answers as defaults
+- `mockAnswers` — answers map for --mock mode
+- `renderer` — custom renderer instance
+- `configFilePath` — path used to resolve relative onComplete handler paths
+
+## Config shape
+
+```yaml
+meta:
+  name: My Wizard
+  description: What it does
+  icon: "🚀"            # optional emoji shown in banner
+  review: true          # show review screen before submitting
+
+theme:
+  preset: catppuccin    # default|catppuccin|dracula|nord|tokyonight|monokai
+  spinner: dots         # named preset or { frames: [...], interval: 80 }
+
+steps:
+  - id: name
+    type: text          # text|select|multiselect|confirm|password|number|search|editor|path|toggle|note
+    message: Project name?
+    when: { field: prev-step, equals: true }   # conditional
+    validate: [{ rule: required }, { rule: minLength, value: 3 }]
+    default: my-app
+    checked: true       # multiselect: pre-checked
+
+checks:               # pre-flight shell commands
+  - name: Git installed
+    run: git --version
+    message: Install git first
+
+onComplete: ./handlers/setup.ts   # TS/JS file, default export called with { answers, config }
+
+actions:              # post-wizard shell commands, run after onComplete
+  - name: Create dir
+    run: "mkdir {{project-name}}"
+    when: { field: create-dir, equals: true }
+
+output:
+  format: json          # json|env|yaml
+  path: ./.output.json
+```
 
 ## Full reference
 
@@ -29,5 +82,6 @@ https://raw.githubusercontent.com/YosefHayim/grimoire/main/docs/GRIMOIRE_REFEREN
 
 npm: grimoire-wizard
 GitHub: https://github.com/YosefHayim/grimoire
+Version: 0.5.2
 License: MIT
 Node: >= 18 (ESM)

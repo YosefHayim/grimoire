@@ -13,7 +13,12 @@ import { evaluateCondition } from './conditions';
 import { loadCachedAnswers, saveCachedAnswers } from './cache';
 import { saveProgress, loadProgress, clearProgress } from './progress';
 import { recordSelection, getOrderedOptions } from './mru';
-import type { ActionConfig, PreFlightCheck, SelectChoice, SelectOption, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { platform } from 'node:os';
+import type { ActionConfig, HookContext, OptionsFromFn, PreFlightCheck, PromptConfig, SelectChoice, SelectOption, StepConfig, WizardConfig, WizardEvent, WizardRenderer, WizardState, ResolvedTheme } from './types';
+
+const execFileAsync = promisify(execFile);
 
 function emitEvent(renderer: WizardRenderer, event: WizardEvent, theme: ResolvedTheme): void {
   if (renderer.onEvent) {
@@ -27,8 +32,8 @@ export interface RunWizardOptions {
   plain?: boolean;
   mockAnswers?: Record<string, unknown>;
   templateAnswers?: Record<string, unknown>;
-  onBeforeStep?: (stepId: string, step: StepConfig, state: WizardState) => Promise<void> | void;
-  onAfterStep?: (stepId: string, value: unknown, state: WizardState) => Promise<void> | void;
+  onBeforeStep?: (stepId: string, step: StepConfig, context: HookContext) => Promise<void> | void;
+  onAfterStep?: (stepId: string, value: unknown, context: HookContext) => Promise<void> | void;
   onStepComplete?: (stepId: string, value: unknown, state: WizardState) => void;
   onCancel?: (state: WizardState) => void;
   plugins?: GrimoirePlugin[];
@@ -161,7 +166,14 @@ export async function runWizard(
     }
 
     const visibleStepsForCount = getVisibleSteps(config, state.answers);
-    emitEvent(renderer, { type: 'session:start', wizard: config.meta.name, description: config.meta.description, totalSteps: visibleStepsForCount.length }, theme);
+    emitEvent(renderer, {
+      type: 'session:start',
+      wizard: config.meta.name,
+      description: config.meta.description,
+      totalSteps: visibleStepsForCount.length,
+      banner: config.meta.banner,
+      subtitle: config.meta.subtitle,
+    }, theme);
 
     let needsReview = true;
 
@@ -169,11 +181,66 @@ export async function runWizard(
       let previousGroup: string | undefined;
 
       while (state.status === 'running') {
+        let nextStepOverride: string | undefined;
+
+        const createHookContext = (stateOverride?: WizardState): HookContext => ({
+          answers: { ...(stateOverride ?? state).answers },
+          state: stateOverride ?? state,
+          showNote: (title: string, body: string) => {
+            emitEvent(renderer, { type: 'note', title, body }, theme);
+          },
+          setNextStep: (stepId: string) => {
+            nextStepOverride = stepId;
+          },
+          openBrowser: async (url: string) => {
+            if (isMock) return;
+            const os = platform();
+            try {
+              if (os === 'win32') {
+                await execFileAsync('cmd', ['/c', 'start', '', url]);
+              } else {
+                const opener = os === 'darwin' ? 'open' : 'xdg-open';
+                await execFileAsync(opener, [url]);
+              }
+            } catch {
+              emitEvent(renderer, {
+                type: 'note',
+                title: 'Could not open browser',
+                body: `Open this URL manually: ${url}`,
+              }, theme);
+            }
+          },
+          prompt: async (promptConfig: PromptConfig): Promise<unknown> => {
+            if (isMock) {
+              if (promptConfig.default !== undefined) {
+                return promptConfig.default;
+              }
+              throw new Error('Mock mode: context.prompt() requires a default value');
+            }
+            const contextState = stateOverride ?? state;
+            const tempStep = {
+              id: '__hook_prompt__',
+              ...promptConfig,
+              ...(promptConfig.type === 'select'
+                ? { options: (promptConfig as { options?: SelectOption[] }).options ?? [] }
+                : {}),
+            } as StepConfig;
+            return renderStep(renderer, tempStep, contextState, theme);
+          },
+        });
+
         const visibleSteps = getVisibleSteps(config, state.answers);
         const currentStep = config.steps.find((s) => s.id === state.currentStepId);
 
         if (!currentStep) {
           throw new Error(`Current step not found: "${state.currentStepId}"`);
+        }
+
+        if (config.meta.clearBetweenSteps) {
+          renderer.clear();
+          if (!quiet) {
+            printWizardHeader(config, theme, options?.plain);
+          }
         }
 
         if (currentStep.group !== undefined && currentStep.group !== previousGroup) {
@@ -196,11 +263,15 @@ export async function runWizard(
         emitEvent(renderer, { type: 'step:start', stepId: currentStep.id, stepIndex, totalVisible: visibleSteps.length, step: currentStep }, theme);
 
         if (currentStep.type === 'note') {
-          emitEvent(renderer, { type: 'note', title: resolvedMessage, body: resolvedDescription ?? '' }, theme);
+          let noteBody = resolvedDescription ?? '';
+          if ('dynamicContent' in currentStep && typeof currentStep.dynamicContent === 'function') {
+            noteBody = await currentStep.dynamicContent(state.answers);
+          }
+          emitEvent(renderer, { type: 'note', title: resolvedMessage, body: noteBody }, theme);
         }
 
         if (options?.onBeforeStep) {
-          await options.onBeforeStep(currentStep.id, currentStep, state);
+          await options.onBeforeStep(currentStep.id, currentStep, createHookContext());
         }
 
         const pluginStep = getPluginStep(currentStep.type);
@@ -211,7 +282,22 @@ export async function runWizard(
         const templatedStep = resolveStepTemplates(withTemplate, state.answers);
         const mruStep = mruEnabled ? applyMruOrdering(templatedStep, config.meta.name) : templatedStep;
 
-        let finalStep = mruStep;
+        let finalStep: StepConfig = mruStep;
+        if (isSelectLikeStep(currentStep.type) && hasOptionsFromFn(finalStep)) {
+          const optionsFromFn = (finalStep as unknown as Record<string, unknown>).optionsFrom as OptionsFromFn;
+          if (!isMock) {
+            emitEvent(renderer, { type: 'spinner:start', message: resolvedMessage }, theme);
+          }
+          let dynamicOpts: SelectOption[];
+          try {
+            dynamicOpts = await optionsFromFn(state.answers);
+          } finally {
+            if (!isMock) {
+              emitEvent(renderer, { type: 'spinner:stop', message: resolvedMessage }, theme);
+            }
+          }
+          finalStep = { ...finalStep, options: dynamicOpts } as StepConfig;
+        }
         if (!isMock && options?.optionsProvider && isSelectLikeStep(currentStep.type)) {
           if (renderer) emitEvent(renderer, { type: 'spinner:start', message: resolvedMessage }, theme);
           const dynamicOptions = await options.optionsProvider(currentStep.id, state.answers);
@@ -266,10 +352,19 @@ export async function runWizard(
           }
 
           if (options?.onAfterStep) {
-            await options.onAfterStep(currentStep.id, value, nextState);
+            await options.onAfterStep(currentStep.id, value, createHookContext(nextState));
           }
 
-          state = nextState;
+          if (nextStepOverride) {
+            const targetExists = config.steps.some(s => s.id === nextStepOverride);
+            if (!targetExists) {
+              throw new Error(`setNextStep: step "${nextStepOverride}" does not exist`);
+            }
+            state = { ...nextState, currentStepId: nextStepOverride };
+            nextStepOverride = undefined;
+          } else {
+            state = nextState;
+          }
           emitEvent(renderer, { type: 'step:complete', stepId: currentStep.id, value, step: currentStep }, theme);
 
           if (mruEnabled && isSelectLikeStep(currentStep.type)) {
@@ -523,6 +618,10 @@ function isSelectLikeStep(type: string): boolean {
   return type === 'select' || type === 'multiselect' || type === 'search';
 }
 
+function hasOptionsFromFn(step: StepConfig): boolean {
+  return 'optionsFrom' in step && typeof (step as unknown as Record<string, unknown>).optionsFrom === 'function';
+}
+
 function applyMruOrdering(step: StepConfig, wizardName: string): StepConfig {
   if (step.type === 'select') {
     return { ...step, options: getOrderedOptions(wizardName, step.id, step.options) };
@@ -562,20 +661,20 @@ function resolveStepTemplates(step: StepConfig, answers: Record<string, unknown>
     case 'select':
       return {
         ...step,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'multiselect':
       return {
         ...step,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'search':
       return {
         ...step,
         placeholder: step.placeholder ? resolveTemplate(step.placeholder, answers) : undefined,
-        options: resolveChoiceTemplates(step.options, answers),
+        options: resolveChoiceTemplates(step.options ?? [], answers),
         description: step.description ? resolveTemplate(step.description, answers) : undefined,
       };
     case 'path':
@@ -672,7 +771,14 @@ async function executeActions(
 
 function printWizardHeader(config: WizardConfig, theme: ResolvedTheme, plain?: boolean): void {
   console.log();
-  console.log(renderBanner(config.meta.name, theme, { plain, icon: config.meta.icon }));
+  if (config.meta.banner) {
+    console.log(config.meta.banner);
+  } else {
+    console.log(renderBanner(config.meta.name, theme, { plain, icon: config.meta.icon }));
+  }
+  if (config.meta.subtitle) {
+    console.log(`  ${theme.accent(config.meta.subtitle)}`);
+  }
   if (config.meta.description) {
     console.log(`  ${theme.muted(config.meta.description)}`);
   }

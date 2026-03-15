@@ -26,13 +26,17 @@ export function renderBanner(
       horizontalLayout: 'default',
     });
 
-    const lines = art
-      .split('\n')
-      .map((line) => `  ${line}`)
+    const artLines = art.split('\n');
+    const lines = artLines
+      .map((line, i) => {
+        if (icon && i === Math.floor(artLines.length / 2)) {
+          return `  ${icon}  ${line}`;
+        }
+        return icon ? `      ${line}` : `  ${line}`;
+      })
       .join('\n');
 
-    const banner = GRIMOIRE_GRADIENT(lines);
-    return icon ? `  ${icon}\n${banner}` : banner;
+    return GRIMOIRE_GRADIENT(lines);
   } catch {
     return `  ${prefix}${theme.bold(name)}`;
   }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-03-15
+
+### Fixed
+- **Icon renders inline** — `meta.icon` emoji now renders vertically centered alongside the ASCII banner instead of floating above it
+- **`checked` on SelectOption** — multiselect options can now specify `checked: true` for pre-selected defaults
+- **`optionsProvider` skipped in mock mode** — no longer calls provider during non-interactive `--mock` runs
+
 ## [0.5.1] - 2026-03-15
 
 ### Added

@@ -30,6 +30,7 @@ export interface SelectOption {
   label: string;
   hint?: string;
   disabled?: boolean | string;
+  checked?: boolean;
 }
 
 export interface SeparatorOption {
